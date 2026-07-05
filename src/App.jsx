@@ -946,22 +946,7 @@ const App = () => {
                    )}
                 </div>
               )}
-              {step === 'input_hundreds_answer' && (
-                <div className="w-full mt-auto pt-1.5 border-t border-dashed border-purple-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
-                  <span className="text-[10px] md:text-xs font-bold text-purple-950 text-center">How many piles remain?</span>
-                  <div className="grid grid-cols-5 gap-1 justify-items-center w-full max-w-[130px] mt-0.5">
-                    {[...Array(10)].map((_, digit) => (
-                      <button
-                        key={digit}
-                        onClick={() => handleVerifyHundredsDigit(digit)}
-                        className="w-5.5 h-5.5 rounded-full bg-[#4a5a6a] hover:bg-[#2a3a4a] active:scale-90 transition-transform text-[#f4e4bc] font-bold text-[10px] flex items-center justify-center border border-[#1a2a3a]"
-                      >
-                        {digit}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+
             </div>
 
             {/* Tens Column */}
@@ -1044,22 +1029,6 @@ const App = () => {
                    )}
                 </div>
               )}
-               {step === 'input_tens_answer' && (
-                 <div className="w-full mt-auto pt-1.5 border-t border-dashed border-sky-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
-                   <span className="text-[10px] md:text-xs font-bold text-sky-950 text-center">How many bars remain?</span>
-                   <div className="grid grid-cols-5 gap-1 justify-items-center w-full max-w-[130px] mt-0.5">
-                     {[...Array(10)].map((_, digit) => (
-                       <button
-                         key={digit}
-                         onClick={() => handleVerifyTensDigit(digit)}
-                         className="w-5.5 h-5.5 rounded-full bg-[#2b5a3b] hover:bg-[#1a4a2b] active:scale-90 transition-transform text-[#f4e4bc] font-bold text-[10px] flex items-center justify-center border border-[#1a3a1b]"
-                       >
-                         {digit}
-                       </button>
-                     ))}
-                   </div>
-                 </div>
-               )}
             </div>
 
             {/* Ones Column */}
@@ -1123,83 +1092,101 @@ const App = () => {
                    )}
                 </div>
               )}
-              {step === 'input_ones_answer' && (
-                 <div className="w-full mt-auto pt-1.5 border-t border-dashed border-amber-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
-                   <span className="text-[10px] md:text-xs font-bold text-amber-950 text-center">How many coins remain?</span>
-                   <div className="grid grid-cols-5 gap-1 justify-items-center w-full max-w-[130px] mt-0.5">
-                     {[...Array(10)].map((_, digit) => (
-                       <button
-                         key={digit}
-                         onClick={() => handleVerifyOnesDigit(digit)}
-                         className="w-5.5 h-5.5 rounded-full bg-[#d49a2a] hover:bg-[#b47a0a] active:scale-90 transition-transform text-[#f4e4bc] font-bold text-[10px] flex items-center justify-center border border-[#8b5a1b]"
-                       >
-                         {digit}
-                       </button>
-                     ))}
-                   </div>
-                 </div>
-               )}
+
             </div>
           </div>
 
           {/* Action Area */}
-          <div className="mt-4 flex gap-3 min-h-12 flex-wrap items-center justify-center font-serif">
-            {mode === 'addition' && (
-              <>
-                {step === 'combine_ones' && <Button onClick={handleCombineOnes}>1. Combine Coins</Button>}
-                {step === 'eval_carry_ones' && (
-                  <>
-                    <Button onClick={() => handleEvalCarryOnes(true)}>Aye, melt 'em!</Button>
-                    <Button color="slate" onClick={() => handleEvalCarryOnes(false)}>Nay, not enough</Button>
-                  </>
-                )}
-                {step === 'regroup_ones' && <Button color="amber" onClick={handleRegroupOnes}>2. Melt 10 Coins!</Button>}
+          <div className="mt-4 flex gap-3 min-h-12 flex-wrap items-center justify-center font-serif w-full">
+             {['input_ones_answer', 'input_tens_answer', 'input_hundreds_answer'].includes(step) ? (
+               <div className="flex flex-col items-center gap-2.5 w-full max-w-xl animate-fade-in">
+                 <span className="text-[#4a3b2c] font-bold text-base md:text-lg">
+                   {step === 'input_ones_answer' && "Select the number of Coins remaining:"}
+                   {step === 'input_tens_answer' && "Select the number of Gold Bars remaining:"}
+                   {step === 'input_hundreds_answer' && "Select the number of Gold Piles remaining:"}
+                 </span>
+                 <div className="flex gap-2.5 justify-center flex-wrap">
+                   {[...Array(10)].map((_, digit) => {
+                     let btnColorClass = "bg-[#d49a2a] hover:bg-[#b47a0a] border-[#8b5a1b]";
+                     if (step === 'input_tens_answer') btnColorClass = "bg-[#2b5a3b] hover:bg-[#1a4a2b] border-[#1a3a1b]";
+                     if (step === 'input_hundreds_answer') btnColorClass = "bg-[#4a5a6a] hover:bg-[#2a3a4a] border-[#1a2a3a]";
 
-                {step === 'combine_tens' && <Button onClick={handleCombineTens}>3. Combine Bars</Button>}
-                {step === 'eval_carry_tens' && (
-                  <>
-                    <Button onClick={() => handleEvalCarryTens(true)}>Aye, stack 'em!</Button>
-                    <Button color="slate" onClick={() => handleEvalCarryTens(false)}>Nay, not enough</Button>
-                  </>
-                )}
-                {step === 'regroup_tens' && <Button color="amber" onClick={handleRegroupTens}>4. Stack 10 Bars!</Button>}
+                     return (
+                       <button
+                         key={digit}
+                         onClick={() => {
+                           if (step === 'input_ones_answer') handleVerifyOnesDigit(digit);
+                           else if (step === 'input_tens_answer') handleVerifyTensDigit(digit);
+                           else if (step === 'input_hundreds_answer') handleVerifyHundredsDigit(digit);
+                         }}
+                         className={`w-12 h-12 md:w-14 md:h-14 rounded-full ${btnColorClass} text-[#f4e4bc] font-bold text-lg md:text-xl flex items-center justify-center border-2 shadow-md hover:scale-105 active:scale-95 transition-all duration-150`}
+                       >
+                         {digit}
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
+             ) : (
+               <>
+                 {mode === 'addition' && (
+                   <>
+                     {step === 'combine_ones' && <Button onClick={handleCombineOnes}>1. Combine Coins</Button>}
+                     {step === 'eval_carry_ones' && (
+                       <>
+                         <Button onClick={() => handleEvalCarryOnes(true)}>Aye, melt 'em!</Button>
+                         <Button color="slate" onClick={() => handleEvalCarryOnes(false)}>Nay, not enough</Button>
+                       </>
+                     )}
+                     {step === 'regroup_ones' && <Button color="amber" onClick={handleRegroupOnes}>2. Melt 10 Coins!</Button>}
 
-                {step === 'combine_hundreds' && <Button color="amber" onClick={handleCombineHundreds}>5. Combine Piles</Button>}
+                     {step === 'combine_tens' && <Button onClick={handleCombineTens}>3. Combine Bars</Button>}
+                     {step === 'eval_carry_tens' && (
+                       <>
+                         <Button onClick={() => handleEvalCarryTens(true)}>Aye, stack 'em!</Button>
+                         <Button color="slate" onClick={() => handleEvalCarryTens(false)}>Nay, not enough</Button>
+                       </>
+                     )}
+                     {step === 'regroup_tens' && <Button color="amber" onClick={handleRegroupTens}>4. Stack 10 Bars!</Button>}
 
-                {step === 'done' && (
-                  <Button color="emerald" onClick={handleNextProblem}>Next Adventure!</Button>
-                )}
-              </>
-            )}
+                     {step === 'combine_hundreds' && <Button color="amber" onClick={handleCombineHundreds}>5. Combine Piles</Button>}
 
-            {mode === 'subtraction' && (
-              <>
-                {step === 'eval_borrow_ones' && (
-                  <>
-                    <Button onClick={() => handleEvalBorrowOnes('yes')}>Aye, break somethin'</Button>
-                    <Button color="slate" onClick={() => handleEvalBorrowOnes('no')}>Nay, we have enough</Button>
-                  </>
-                )}
-                {step === 'ask_source_for_ones' && (
-                  <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Bar or Gold Pile to break it!</span>
-                )}
+                     {step === 'done' && (
+                       <Button color="emerald" onClick={handleNextProblem}>Next Adventure!</Button>
+                     )}
+                   </>
+                 )}
 
-                {step === 'eval_borrow_tens' && (
-                  <>
-                    <Button onClick={() => handleEvalBorrowTens('yes')}>Aye, break somethin'</Button>
-                    <Button color="slate" onClick={() => handleEvalBorrowTens('no')}>Nay, we have enough</Button>
-                  </>
-                )}
-                {step === 'ask_source_for_tens' && (
-                  <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Pile to break it!</span>
-                )}
+                 {mode === 'subtraction' && (
+                   <>
+                     {step === 'eval_borrow_ones' && (
+                       <>
+                         <Button onClick={() => handleEvalBorrowOnes('yes')}>Aye, break somethin'</Button>
+                         <Button color="slate" onClick={() => handleEvalBorrowOnes('no')}>Nay, we have enough</Button>
+                       </>
+                     )}
+                     {step === 'ask_source_for_ones' && (
+                       <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Bar or Gold Pile to break it!</span>
+                     )}
 
-                {step === 'done' && (
-                  <Button color="emerald" onClick={handleNextProblem}>Next Adventure!</Button>
-                )}
-              </>
-            )}
-          </div>
+                     {step === 'eval_borrow_tens' && (
+                       <>
+                         <Button onClick={() => handleEvalBorrowTens('yes')}>Aye, break somethin'</Button>
+                         <Button color="slate" onClick={() => handleEvalBorrowTens('no')}>Nay, we have enough</Button>
+                       </>
+                     )}
+                     {step === 'ask_source_for_tens' && (
+                       <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Pile to break it!</span>
+                     )}
+
+                     {step === 'done' && (
+                       <Button color="emerald" onClick={handleNextProblem}>Next Adventure!</Button>
+                     )}
+                   </>
+                 )}
+               </>
+             )}
+           </div>
 
         </div>
       </div>
