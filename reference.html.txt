@@ -1,0 +1,724 @@
+import React, { useState, useEffect } from 'react';
+
+const App = () => {
+  const [phase, setPhase] = useState('word_problem'); // 'word_problem' or 'calculating'
+  const [mode, setMode] = useState('addition'); // 'addition' or 'subtraction'
+  const [problemText, setProblemText] = useState("");
+  const [problem, setProblem] = useState({ top: 0, bottom: 0 });
+  const [step, setStep] = useState('start');
+  const [feedback, setFeedback] = useState("");
+
+  // State for Addition
+  const [carryOnes, setCarryOnes] = useState(0);
+  const [carryTens, setCarryTens] = useState(0);
+  const [onesAnswer, setOnesAnswer] = useState(0);
+  const [tensAnswer, setTensAnswer] = useState(0);
+  const [hundredsAnswer, setHundredsAnswer] = useState(0);
+
+  // State for Subtraction
+  const [currentHundreds, setCurrentHundreds] = useState(0);
+  const [currentTens, setCurrentTens] = useState(0);
+  const [currentOnes, setCurrentOnes] = useState(0);
+  const [onesRemoved, setOnesRemoved] = useState(0);
+  const [tensRemoved, setTensRemoved] = useState(0);
+  const [hundredsRemoved, setHundredsRemoved] = useState(0);
+
+  // Problem Generator (Word Problems & Numbers)
+  const generateProblem = () => {
+    let isAddition = Math.random() > 0.5;
+    setMode(isAddition ? 'addition' : 'subtraction');
+
+    if (isAddition) {
+      // 3-digit addition with randomized carries
+      let h1 = Math.floor(Math.random() * 3) + 1;
+      let h2 = Math.floor(Math.random() * 3) + 1;
+      let t1 = Math.floor(Math.random() * 9) + 1;
+      let t2 = Math.floor(Math.random() * 9) + 1;
+      let o1 = Math.floor(Math.random() * 9) + 1;
+      let o2 = Math.floor(Math.random() * 9) + 1;
+      
+      let top = h1 * 100 + t1 * 10 + o1;
+      let bottom = h2 * 100 + t2 * 10 + o2;
+      setProblem({ top, bottom });
+      
+      const addTemplates = [
+        `Captain Redbeard has ${top} gold coins, and he found a treasure chest with ${bottom} gold coins inside. How many gold coins does he have in total?`,
+        `Your pirate crew looted ${top} gold coins from an abandoned ship, and later found ${bottom} gold coins buried on Skull Island. What is your total loot?`,
+        `First mate Jack won ${top} gold coins in a game, and the Captain gave him a bonus of ${bottom} gold coins. How much treasure does Jack have now?`
+      ];
+      setProblemText(addTemplates[Math.floor(Math.random() * addTemplates.length)]);
+      
+      setStep('combine_ones');
+      setCarryOnes(0);
+      setCarryTens(0);
+      setOnesAnswer(0);
+      setTensAnswer(0);
+      setHundredsAnswer(0);
+      setFeedback("Step 1: Start with the loose coins! Click 'Combine Coins'.");
+    } else {
+      let type = Math.random();
+      let h1 = Math.floor(Math.random() * 5) + 4;
+      let h2 = Math.floor(Math.random() * (h1 - 1)) + 1;
+      let t1, t2, o1, o2;
+
+      if (type < 0.2) {
+        // No borrows
+        t1 = Math.floor(Math.random() * 5) + 4;
+        t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
+        o1 = Math.floor(Math.random() * 5) + 4;
+        o2 = Math.floor(Math.random() * (o1 - 1)) + 1;
+      } else if (type < 0.45) {
+        // Double borrow
+        o1 = Math.floor(Math.random() * 4);
+        o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
+        t1 = Math.floor(Math.random() * 4) + 1;
+        t2 = Math.floor(Math.random() * (9 - t1)) + t1 + 1;
+      } else if (type < 0.7) {
+        // Skip borrow
+        t1 = 0;
+        t2 = Math.floor(Math.random() * 8) + 1;
+        o1 = Math.floor(Math.random() * 4);
+        o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
+      } else {
+        // Single borrow (ones only)
+        t1 = Math.floor(Math.random() * 5) + 4;
+        t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
+        o1 = Math.floor(Math.random() * 4);
+        o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
+      }
+      
+      let top = h1 * 100 + t1 * 10 + o1;
+      let bottom = h2 * 100 + t2 * 10 + o2;
+      setProblem({ top, bottom });
+
+      const subTemplates = [
+        `A pirate has ${bottom} gold coins. Another pirate gave him some more, and now he has ${top} gold coins in total. How many gold coins did the pirate receive?`,
+        `Black Jack had ${top} gold coins, but he had to pay ${bottom} gold coins to repair his ship. How many gold coins does he have left?`,
+        `You dug up a chest with ${top} gold coins, but a sneaky monkey stole ${bottom} of them! How many gold coins remain?`
+      ];
+      setProblemText(subTemplates[Math.floor(Math.random() * subTemplates.length)]);
+
+      setCurrentHundreds(h1);
+      setCurrentTens(t1);
+      setCurrentOnes(o1);
+      setOnesRemoved(0);
+      setTensRemoved(0);
+      setHundredsRemoved(0);
+      setStep('eval_borrow_ones');
+      setFeedback(`Step 1: Look at the loose coins. We need to pay ${o2}, and we have ${o1}. Do we need to break a Gold Bar?`);
+    }
+    setPhase('word_problem');
+  };
+
+  useEffect(() => {
+    generateProblem();
+  }, []);
+
+  const handleGuessOperation = (guessedMode) => {
+    if (guessedMode === mode) {
+      setPhase('calculating');
+    } else {
+      alert(mode === 'addition' ? 
+        "Avast! We are finding the total amount, which means we need to PUT THEM TOGETHER (Addition)!" : 
+        "Avast! We are trying to find out what's left or finding a missing part, which means we TAKE AWAY (Subtraction)!");
+    }
+  };
+
+
+  // ================= ADDITION LOGIC =================
+  const handleCombineOnes = () => {
+    let sum = (problem.top % 10) + (problem.bottom % 10);
+    setOnesAnswer(sum);
+    setStep('eval_carry_ones');
+    setFeedback(`We have ${sum} loose coins now. Do we need to melt 10 coins into a Gold Bar?`);
+  };
+
+  const handleEvalCarryOnes = (needsCarry) => {
+    if (needsCarry && onesAnswer >= 10) {
+      setStep('regroup_ones');
+      setFeedback("Aye! We have 10 or more. Click 'Melt 10 Coins into a Bar'!");
+    } else if (!needsCarry && onesAnswer < 10) {
+      setStep('combine_tens');
+      setFeedback("Right! Less than 10 coins. Now click 'Combine Bars'.");
+    } else {
+      setFeedback("Are ye sure? Count the loose coins! If it's 10 or more, we MUST melt them!");
+    }
+  };
+
+  const handleRegroupOnes = () => {
+    setOnesAnswer(prev => prev - 10);
+    setCarryOnes(1);
+    setStep('combine_tens');
+    setFeedback("Arr, we forged a Gold Bar! Now click 'Combine Bars'.");
+  };
+
+  const handleCombineTens = () => {
+    let sum = (Math.floor(problem.top / 10) % 10) + (Math.floor(problem.bottom / 10) % 10) + carryOnes;
+    setTensAnswer(sum);
+    setStep('eval_carry_tens');
+    setFeedback(`We have ${sum} Gold Bars now. Do we need to stack 10 Bars into a big Pile?`);
+  };
+
+  const handleEvalCarryTens = (needsCarry) => {
+    if (needsCarry && tensAnswer >= 10) {
+      setStep('regroup_tens');
+      setFeedback("Aye! We have 10 or more bars. Click 'Stack 10 Bars into a Pile'!");
+    } else if (!needsCarry && tensAnswer < 10) {
+      setStep('combine_hundreds');
+      setFeedback("Right! Less than 10 bars. Now click 'Combine Piles'.");
+    } else {
+      setFeedback("Are ye sure? Count the bars again! If it's 10 or more, we MUST stack them!");
+    }
+  };
+
+  const handleRegroupTens = () => {
+    setTensAnswer(prev => prev - 10);
+    setCarryTens(1);
+    setStep('combine_hundreds');
+    setFeedback("We stacked a Gold Pile! Now click 'Combine Piles'.");
+  };
+
+  const handleCombineHundreds = () => {
+    setHundredsAnswer(Math.floor(problem.top / 100) + Math.floor(problem.bottom / 100) + carryTens);
+    setStep('done');
+    setFeedback("Shiver me timbers, ye calculated the total loot!");
+  };
+
+
+  // ================= SUBTRACTION LOGIC =================
+  const handleEvalBorrowOnes = (answer) => {
+    let targetO = problem.bottom % 10;
+    if (answer === 'yes' && currentOnes < targetO) {
+      setStep('ask_source_for_ones');
+      setFeedback("Aye. We don't have enough loose coins. What should we break to get more?");
+    } else if (answer === 'no' && currentOnes >= targetO) {
+      setStep('remove_ones');
+      setFeedback(`Aye, we have enough! Click ${targetO} coins to hand them over.`);
+    } else {
+      setFeedback(`Look closely! We have ${currentOnes} coins, but need to pay ${targetO}. Think again!`);
+    }
+  };
+
+  const handleAskSourceForOnes = (source) => {
+    if (source === 'ten') {
+      if (currentTens > 0) {
+        setStep('borrow_tens');
+        setFeedback("Smart pirate! Click a Gold Bar to break it into 10 loose coins.");
+      } else {
+        setFeedback("Look at the Gold Bars. We have 0! We can't break what we don't have.");
+      }
+    } else if (source === 'hundred') {
+      if (currentTens === 0) {
+        setStep('borrow_hundreds_for_tens');
+        setFeedback("Right! We have no Bars, so we MUST break a Pile first. Click a Gold Pile.");
+      } else {
+        setFeedback("Wait, we have Gold Bars right there! Always break the smaller treasure first.");
+      }
+    }
+  };
+
+  const handleEvalBorrowTens = (answer) => {
+    let targetT = Math.floor(problem.bottom / 10) % 10;
+    if (answer === 'yes' && currentTens < targetT) {
+      setStep('ask_source_for_tens');
+      setFeedback("Aye. We don't have enough bars. What should we break to get more?");
+    } else if (answer === 'no' && currentTens >= targetT) {
+      if (targetT > 0) {
+         setStep('remove_tens');
+         setFeedback(`Aye! Click ${targetT} Gold Bars to hand them over.`);
+      } else {
+         setStep('remove_hundreds');
+         let targetH = Math.floor(problem.bottom / 100);
+         setFeedback(`Moving on! Hand over ${targetH} Gold Piles.`);
+      }
+    } else {
+      setFeedback(`Look closely! We have ${currentTens} bars, but need to pay ${targetT}. Think again!`);
+    }
+  };
+
+  const handleAskSourceForTens = (source) => {
+    if (source === 'hundred') {
+       setStep('borrow_hundreds');
+       setFeedback("Aye! Click a Gold Pile to break it into 10 Bars.");
+    } else {
+       setFeedback("We need BARS! Breaking a Bar gives us loose coins. We must break a Pile.");
+    }
+  };
+
+  const handleBorrowHundred = () => {
+    if (step === 'borrow_hundreds_for_tens') {
+      setCurrentHundreds(prev => prev - 1);
+      setCurrentTens(prev => prev + 10);
+      setStep('ask_source_for_ones');
+      setFeedback("Awesome! Now we have Bars. So where do we get the loose coins from?");
+    } else if (step === 'borrow_hundreds') { 
+      setCurrentHundreds(prev => prev - 1);
+      setCurrentTens(prev => prev + 10);
+      setStep('remove_tens');
+      let targetT = Math.floor(problem.bottom / 10) % 10;
+      setFeedback(`Great! Now click ${targetT} Gold Bars to hand them over.`);
+    }
+  };
+
+  const handleBorrowTen = () => {
+    if (step === 'borrow_tens') {
+      setCurrentTens(prev => prev - 1);
+      setCurrentOnes(prev => prev + 10);
+      setStep('remove_ones');
+      let targetO = problem.bottom % 10;
+      setFeedback(`Great! Now we have enough coins. Click ${targetO} coins to hand them over.`);
+    }
+  };
+
+  const handleRemoveOne = () => { 
+    if (step === 'remove_ones') {
+      setOnesRemoved(prev => prev + 1);
+      let targetO = problem.bottom % 10;
+      if (onesRemoved + 1 === targetO) {
+         setStep('eval_borrow_tens');
+         let targetT = Math.floor(problem.bottom / 10) % 10;
+         setFeedback(`Next column! We need to pay ${targetT} bars, and we have ${currentTens}. Do we need to break a Pile?`);
+      }
+    }
+  };
+
+  const handleRemoveTen = () => { 
+    if (step === 'remove_tens') {
+      setTensRemoved(prev => prev + 1);
+      let targetT = Math.floor(problem.bottom / 10) % 10;
+      if (tensRemoved + 1 === targetT) {
+         let targetH = Math.floor(problem.bottom / 100);
+         if (targetH > 0) {
+           setStep('remove_hundreds');
+           setFeedback(`Almost done! Click ${targetH} Gold Piles to hand them over.`);
+         } else {
+           setStep('done');
+           setFeedback("Shiver me timbers, ye found the remaining loot!");
+         }
+      }
+    }
+  };
+
+  const handleRemoveHundred = () => { 
+    if (step === 'remove_hundreds') {
+      setHundredsRemoved(prev => prev + 1);
+      let targetH = Math.floor(problem.bottom / 100);
+      if (hundredsRemoved + 1 === targetH) {
+         setStep('done');
+         setFeedback("Shiver me timbers, ye found the remaining loot!");
+      }
+    }
+  };
+
+
+  // ================= RENDERERS =================
+
+  if (phase === 'word_problem') {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8 font-serif">
+        <div className="max-w-2xl bg-[#f4e4bc] p-10 rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] border-4 border-[#8b5a2b] relative">
+           <h1 className="text-4xl font-bold text-center text-[#4a3b2c] mb-8 uppercase tracking-widest">Captain's Log</h1>
+           <p className="text-2xl text-[#3a2a1a] mb-12 leading-relaxed text-center">
+             "{problemText}"
+           </p>
+           <div className="flex flex-col gap-4">
+             <p className="text-center font-bold text-xl text-[#8b5a2b]">How do we solve this, matey?</p>
+             <div className="flex justify-center gap-6">
+                <button onClick={() => handleGuessOperation('addition')} className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xl shadow-lg border-2 border-emerald-900 transition-transform active:scale-95">
+                  ADD the Loot (+)
+                </button>
+                <button onClick={() => handleGuessOperation('subtraction')} className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xl shadow-lg border-2 border-rose-900 transition-transform active:scale-95">
+                  SUBTRACT the Loot (-)
+                </button>
+             </div>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculator Phase
+  const topH = Math.floor(problem.top / 100);
+  const topT = Math.floor(problem.top / 10) % 10;
+  const topO = problem.top % 10;
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-800 p-8 font-sans flex flex-col items-center">
+      
+      {/* Header */}
+      <div className="w-full max-w-6xl bg-[#f4e4bc] p-6 rounded shadow-lg border-4 border-[#8b5a2b] mb-6 flex justify-between items-center font-serif">
+        <div>
+          <h1 className="text-3xl font-bold text-[#4a3b2c]">Pirate's Loot Calculator</h1>
+          <p className="text-[#8b5a2b]">Count yer gold, watch yer carries and borrows!</p>
+        </div>
+        <div className="text-xl font-bold text-[#4a3b2c] uppercase bg-[#e3d1a5] px-4 py-2 rounded border border-[#8b5a2b]">
+          Operation: {mode === 'addition' ? 'Addition (+)' : 'Subtraction (-)'}
+        </div>
+      </div>
+
+      {/* Main Workspace */}
+      <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8">
+        
+        {/* Left Panel: Vertical Math Problem */}
+        <div className="bg-[#f4e4bc] p-8 rounded shadow-lg border-4 border-[#8b5a2b] flex flex-col items-center justify-center w-full lg:w-80 shrink-0">
+          <div className="text-6xl font-mono text-right relative select-none w-full pr-8 text-[#3a2a1a]">
+            
+            {/* Addition Problem Setup */}
+            {mode === 'addition' && (
+              <>
+                <div className="flex justify-end gap-2 text-3xl text-emerald-700 font-bold mb-2 h-10">
+                  <div className="w-12 text-center">{carryTens > 0 ? '+1' : ''}</div>
+                  <div className="w-12 text-center">{carryOnes > 0 ? '+1' : ''}</div>
+                  <div className="w-12 text-center"></div>
+                </div>
+                <div className="flex justify-end gap-2 mb-2 tracking-widest relative">
+                  <span className="w-12 text-center">{topH}</span>
+                  <span className="w-12 text-center">{topT}</span>
+                  <span className="w-12 text-center">{topO}</span>
+                </div>
+                <div className="flex justify-end gap-2 border-b-4 border-[#4a3b2c] pb-4 mb-4 relative tracking-widest">
+                  <span className="absolute left-[-20px] top-0">+</span>
+                  <span className="w-12 text-center">{Math.floor(problem.bottom / 100)}</span>
+                  <span className="w-12 text-center">{Math.floor(problem.bottom / 10) % 10}</span>
+                  <span className="w-12 text-center">{problem.bottom % 10}</span>
+                </div>
+                <div className="flex justify-end gap-2 text-emerald-700 font-bold h-16 tracking-widest">
+                  <span className="w-12 text-center">{step === 'done' ? hundredsAnswer : (step === 'combine_hundreds' ? '?' : '')}</span>
+                  <span className="w-12 text-center">{['combine_hundreds', 'done', 'regroup_tens', 'eval_carry_tens'].includes(step) ? (tensAnswer % 10) : (step === 'combine_tens' ? '?' : '')}</span>
+                  <span className="w-12 text-center">{['combine_tens', 'combine_hundreds', 'done', 'regroup_tens', 'eval_carry_tens', 'regroup_ones', 'eval_carry_ones'].includes(step) ? (onesAnswer % 10) : (step === 'combine_ones' ? '' : '')}</span>
+                </div>
+              </>
+            )}
+
+            {/* Subtraction Problem Setup */}
+            {mode === 'subtraction' && (
+              <>
+                <div className="flex justify-end gap-2 text-2xl text-rose-700 font-bold mb-1 h-8">
+                  <div className="w-12 text-center">{currentHundreds !== topH ? currentHundreds : ''}</div>
+                  <div className="w-12 text-center">{currentTens !== topT ? currentTens : ''}</div>
+                  <div className="w-12 text-center">{currentOnes !== topO ? currentOnes : ''}</div>
+                </div>
+                <div className="flex justify-end gap-2 mb-2 tracking-widest relative">
+                  <span className={`w-12 text-center ${currentHundreds !== topH ? "line-through text-slate-500 opacity-50" : ""}`}>{topH}</span>
+                  <span className={`w-12 text-center ${currentTens !== topT ? "line-through text-slate-500 opacity-50" : ""}`}>{topT}</span>
+                  <span className={`w-12 text-center ${currentOnes !== topO ? "line-through text-slate-500 opacity-50" : ""}`}>{topO}</span>
+                </div>
+                <div className="flex justify-end gap-2 border-b-4 border-[#4a3b2c] pb-4 mb-4 relative tracking-widest">
+                  <span className="absolute left-[-20px] top-0">-</span>
+                  <span className="w-12 text-center">{Math.floor(problem.bottom / 100)}</span>
+                  <span className="w-12 text-center">{Math.floor(problem.bottom / 10) % 10}</span>
+                  <span className="w-12 text-center">{problem.bottom % 10}</span>
+                </div>
+                <div className="flex justify-end gap-2 text-rose-700 font-bold h-16 tracking-widest">
+                  <span className="w-12 text-center">{step === 'done' ? Math.floor((problem.top - problem.bottom) / 100) : ''}</span>
+                  <span className="w-12 text-center">{step === 'done' ? Math.floor((problem.top - problem.bottom) / 10) % 10 : ''}</span>
+                  <span className="w-12 text-center">{['eval_borrow_tens', 'ask_source_for_tens', 'borrow_hundreds', 'remove_tens', 'remove_hundreds', 'done'].includes(step) ? (currentOnes - (problem.bottom % 10)) : ''}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Right Panel: Visual Blocks Area */}
+        <div className="bg-[#f4e4bc] p-6 rounded shadow-lg border-4 border-[#8b5a2b] flex-1 flex flex-col items-center">
+          
+          {/* Feedback Bar */}
+          <div className="w-full bg-[#3a2a1a] text-[#f4e4bc] p-4 rounded mb-6 text-center text-xl font-serif font-bold shadow-inset border-2 border-[#1a1005]">
+            {feedback}
+          </div>
+
+          {/* Visual Canvas */}
+          <div className="flex w-full gap-4 h-[500px] relative">
+            
+            {/* Hundreds Column */}
+            <div className="flex-[1.5] bg-purple-900/10 rounded p-4 border-2 border-dashed border-purple-900/30 flex flex-col items-center relative overflow-y-auto">
+              <h3 className="text-purple-950 font-bold mb-4 uppercase tracking-wider text-sm sticky top-0 w-full text-center pb-2 z-20 font-serif">100s: Gold Piles</h3>
+              {mode === 'addition' && (
+                <div className="w-full flex flex-col items-center gap-2">
+                  {step === 'done' ? (
+                    <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                      {[...Array(hundredsAnswer)].map((_, i) => <HundredBlock key={`h-ans-${i}`} />)}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                        {[...Array(topH)].map((_, i) => <HundredBlock key={`h-top-${i}`} />)}
+                        {carryTens > 0 && <HundredBlock isCarry={true} />}
+                      </div>
+                      <div className="w-full h-px bg-purple-900/30 my-2"></div>
+                      <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                        {[...Array(Math.floor(problem.bottom / 100))].map((_, i) => <HundredBlock key={`h-bot-${i}`} />)}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {mode === 'subtraction' && (
+                <div className="w-full flex flex-col items-center gap-4">
+                   <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                     {[...Array(currentHundreds)].map((_, i) => {
+                       const isRemoved = i < hundredsRemoved;
+                       const isInteractive = step === 'remove_hundreds' && !isRemoved;
+                       const isBorrowTarget = (step === 'borrow_hundreds' || step === 'borrow_hundreds_for_tens') && i === currentHundreds - 1;
+                       return (
+                         <div key={`sub-h-${i}`} onClick={isInteractive ? handleRemoveHundred : (isBorrowTarget ? handleBorrowHundred : undefined)} className={`${isInteractive ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}>
+                           <HundredBlock isBorrowTarget={isBorrowTarget} />
+                         </div>
+                       );
+                     })}
+                   </div>
+                   {step !== 'done' && (
+                     <>
+                       <div className="w-full border-t-2 border-dashed border-purple-900/30 pt-2 text-center text-xs text-purple-950 font-bold uppercase tracking-wider">Pay</div>
+                       <div className="grid grid-cols-5 gap-3 w-full justify-items-center opacity-70">
+                         {[...Array(Math.floor(problem.bottom / 100))].map((_, i) => <HundredBlock key={`sub-h-dash-${i}`} dashed={true} removedTarget={i < hundredsRemoved} />)}
+                       </div>
+                     </>
+                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Tens Column */}
+            <div className="flex-1 bg-sky-900/10 rounded p-4 border-2 border-dashed border-sky-900/30 flex flex-col items-center relative overflow-y-auto">
+              <h3 className="text-sky-950 font-bold mb-4 uppercase tracking-wider text-sm sticky top-0 w-full text-center pb-2 z-20 font-serif">10s: Gold Bars</h3>
+              {mode === 'addition' && (
+                <div className="w-full flex flex-col items-center gap-2">
+                  {['eval_carry_tens', 'combine_hundreds', 'regroup_tens', 'done'].includes(step) ? (
+                    <div className="grid grid-cols-5 gap-3 w-full justify-items-center mt-6">
+                      {[...Array(tensAnswer)].map((_, i) => <TenBlock key={`t-ans-${i}`} isCarry={['regroup_tens', 'eval_carry_tens'].includes(step) && i >= 10} />)}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                        {[...Array(topT)].map((_, i) => <TenBlock key={`t-top-${i}`} />)}
+                        {carryOnes > 0 && <TenBlock isCarry={true} />}
+                      </div>
+                      <div className="w-full h-px bg-sky-900/30 my-2"></div>
+                      <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                        {[...Array(Math.floor(problem.bottom / 10) % 10)].map((_, i) => <TenBlock key={`t-bot-${i}`} />)}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {mode === 'subtraction' && (
+                <div className="w-full flex flex-col items-center gap-4">
+                   <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                     {[...Array(currentTens)].map((_, i) => {
+                       const isRemoved = i < tensRemoved;
+                       const isInteractive = step === 'remove_tens' && !isRemoved;
+                       const isBorrowTarget = step === 'borrow_tens' && i === currentTens - 1;
+                       const isNewBorrowed = (step === 'borrow_tens' || step === 'remove_tens' || step === 'ask_source_for_ones') && tensRemoved === 0 && currentTens > topT && i >= currentTens - 10;
+                       return (
+                         <div key={`sub-t-${i}`} onClick={isInteractive ? handleRemoveTen : (isBorrowTarget ? handleBorrowTen : undefined)} className={`${isInteractive ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}>
+                           <TenBlock isBorrowTarget={isBorrowTarget} isNewBorrowed={isNewBorrowed && step === 'ask_source_for_ones'} />
+                         </div>
+                       );
+                     })}
+                   </div>
+                   {step !== 'done' && (
+                     <>
+                       <div className="w-full border-t-2 border-dashed border-sky-900/30 pt-2 text-center text-xs text-sky-950 font-bold uppercase tracking-wider">Pay</div>
+                       <div className="grid grid-cols-5 gap-3 w-full justify-items-center opacity-70">
+                         {[...Array(Math.floor(problem.bottom / 10) % 10)].map((_, i) => <TenBlock key={`sub-t-dash-${i}`} dashed={true} removedTarget={i < tensRemoved} />)}
+                       </div>
+                     </>
+                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Ones Column */}
+            <div className="flex-1 bg-amber-900/10 rounded p-4 border-2 border-dashed border-amber-900/30 flex flex-col items-center relative overflow-y-auto">
+              <h3 className="text-amber-950 font-bold mb-4 uppercase tracking-wider text-sm sticky top-0 w-full text-center pb-2 z-20 font-serif">1s: Coins</h3>
+              {mode === 'addition' && (
+                <div className="w-full flex flex-col items-center gap-2">
+                  {step === 'combine_ones' ? (
+                     <>
+                       <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                         {[...Array(topO)].map((_, i) => <OneBlock key={`o-top-${i}`} />)}
+                       </div>
+                       <div className="w-full h-px bg-amber-900/30 my-2"></div>
+                       <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                         {[...Array(problem.bottom % 10)].map((_, i) => <OneBlock key={`o-bot-${i}`} />)}
+                       </div>
+                     </>
+                  ) : (
+                     <div className="grid grid-cols-5 gap-3 w-full justify-items-center mt-6">
+                       {[...Array(onesAnswer)].map((_, i) => <OneBlock key={`o-ans-${i}`} isCarry={['regroup_ones', 'eval_carry_ones'].includes(step) && i >= 10} />)}
+                     </div>
+                  )}
+                </div>
+              )}
+              {mode === 'subtraction' && (
+                <div className="w-full flex flex-col items-center gap-4">
+                  <div className="grid grid-cols-5 gap-3 w-full justify-items-center">
+                    {[...Array(currentOnes)].map((_, i) => {
+                       const isRemoved = i < onesRemoved;
+                       const isInteractive = step === 'remove_ones' && !isRemoved;
+                       const isNewBorrowed = currentOnes > topO && onesRemoved === 0 && i >= currentOnes - 10 && step === 'remove_ones';
+                       return (
+                         <div key={`sub-o-${i}`} onClick={isInteractive ? handleRemoveOne : undefined} className={`${isInteractive ? 'cursor-pointer hover:scale-110 transition-transform' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}>
+                           <OneBlock isNewBorrowed={isNewBorrowed} />
+                         </div>
+                       )
+                    })}
+                  </div>
+                  {step !== 'done' && (
+                    <>
+                      <div className="w-full border-t-2 border-dashed border-amber-900/30 pt-2 text-center text-xs text-amber-950 font-bold uppercase tracking-wider">Pay</div>
+                      <div className="grid grid-cols-5 gap-3 w-full justify-items-center opacity-70">
+                        {[...Array(problem.bottom % 10)].map((_, i) => <OneBlock key={`sub-o-dash-${i}`} dashed={true} removedTarget={i < onesRemoved} />)}
+                      </div>
+                    </>
+                   )}
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* Action Area */}
+          <div className="mt-8 flex gap-4 h-14 font-serif">
+            {mode === 'addition' && (
+              <>
+                {step === 'combine_ones' && <Button onClick={handleCombineOnes}>1. Combine Coins</Button>}
+                {step === 'eval_carry_ones' && (
+                  <>
+                    <Button onClick={() => handleEvalCarryOnes(true)}>Aye, melt 'em!</Button>
+                    <Button color="slate" onClick={() => handleEvalCarryOnes(false)}>Nay, not enough</Button>
+                  </>
+                )}
+                {step === 'regroup_ones' && <Button color="amber" onClick={handleRegroupOnes}>2. Melt 10 Coins into a Bar!</Button>}
+                
+                {step === 'combine_tens' && <Button onClick={handleCombineTens}>3. Combine Bars</Button>}
+                {step === 'eval_carry_tens' && (
+                  <>
+                    <Button onClick={() => handleEvalCarryTens(true)}>Aye, stack 'em!</Button>
+                    <Button color="slate" onClick={() => handleEvalCarryTens(false)}>Nay, not enough</Button>
+                  </>
+                )}
+                {step === 'regroup_tens' && <Button color="amber" onClick={handleRegroupTens}>4. Stack 10 Bars into a Pile!</Button>}
+                
+                {step === 'combine_hundreds' && <Button color="amber" onClick={handleCombineHundreds}>5. Combine Piles</Button>}
+                {step === 'done' && <Button color="green" onClick={generateProblem}>Next Adventure!</Button>}
+              </>
+            )}
+            
+            {mode === 'subtraction' && (
+              <>
+                {step === 'eval_borrow_ones' && (
+                  <>
+                    <Button onClick={() => handleEvalBorrowOnes('yes')}>Aye, break somethin'</Button>
+                    <Button color="slate" onClick={() => handleEvalBorrowOnes('no')}>Nay, we have enough</Button>
+                  </>
+                )}
+                {step === 'ask_source_for_ones' && (
+                  <>
+                    <Button color="amber" onClick={() => handleAskSourceForOnes('ten')}>Break a Gold Bar</Button>
+                    <Button color="amber" onClick={() => handleAskSourceForOnes('hundred')}>Break a Gold Pile</Button>
+                  </>
+                )}
+                {step === 'eval_borrow_tens' && (
+                  <>
+                    <Button onClick={() => handleEvalBorrowTens('yes')}>Aye, break somethin'</Button>
+                    <Button color="slate" onClick={() => handleEvalBorrowTens('no')}>Nay, we have enough</Button>
+                  </>
+                )}
+                {step === 'ask_source_for_tens' && (
+                  <>
+                    <Button color="amber" onClick={() => handleAskSourceForTens('hundred')}>Break a Gold Pile</Button>
+                    <Button color="slate" onClick={() => handleAskSourceForTens('ten')}>Break a Gold Bar</Button>
+                  </>
+                )}
+                
+                {step === 'done' && <Button color="green" onClick={generateProblem}>Next Adventure!</Button>}
+              </>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Pirate Styled Components
+
+const HundredBlock = ({ isCarry = false, isBorrowTarget = false, dashed = false, removedTarget = false }) => {
+  const highlight = isCarry || isBorrowTarget;
+  return (
+    <div className={`w-14 h-14 rounded-sm transition-all duration-300 shadow-lg relative flex-shrink-0
+      ${dashed ? (removedTarget ? 'bg-emerald-100/50 border-2 border-emerald-500' : 'bg-transparent border-2 border-dashed border-amber-600') : 
+        'bg-yellow-400 border-2 border-yellow-600 shadow-[inset_0_-4px_8px_rgba(180,100,0,0.4)]'}
+      ${highlight && !dashed ? 'ring-4 ring-rose-500 shadow-xl shadow-rose-500/50 scale-105 z-10 cursor-pointer animate-pulse' : ''}
+    `}
+    style={!dashed ? {
+        backgroundImage: `linear-gradient(to right, rgba(180, 100, 0, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(180, 100, 0, 0.4) 1px, transparent 1px)`,
+        backgroundSize: '10% 10%'
+    } : {}}>
+      {dashed && removedTarget && <div className="absolute inset-0 flex items-center justify-center text-emerald-600 font-bold text-2xl">✓</div>}
+      {isBorrowTarget && (
+         <div className="absolute -top-2 -right-2 bg-rose-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-lg whitespace-nowrap z-20">Break!</div>
+      )}
+    </div>
+  );
+};
+
+const TenBlock = ({ isCarry = false, isBorrowTarget = false, isNewBorrowed = false, dashed = false, removedTarget = false }) => {
+  const highlight = isCarry || isBorrowTarget || isNewBorrowed;
+  return (
+    <div className={`w-5 h-20 rounded-sm flex flex-col gap-[1px] p-[1px] transition-all duration-500 shadow-md flex-shrink-0 relative
+      ${dashed ? (removedTarget ? 'bg-emerald-100/50 border-2 border-emerald-500' : 'bg-transparent border-2 border-dashed border-amber-600') : 
+        'bg-yellow-400 border border-yellow-600 shadow-[inset_-2px_0_4px_rgba(180,100,0,0.3)]'}
+      ${highlight && !dashed ? 'ring-4 ring-rose-500 shadow-xl shadow-rose-500/50 scale-105 z-10 cursor-pointer animate-pulse' : ''}
+    `}>
+      {dashed ? (
+        removedTarget && <div className="flex items-center justify-center h-full text-emerald-600 font-bold text-lg">✓</div>
+      ) : (
+        <>
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className={`w-full flex-1 rounded-[1px] bg-yellow-300 border-b border-yellow-500/50`}></div>
+          ))}
+          {isBorrowTarget && (
+             <div className="absolute -top-2 -right-3 bg-rose-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-lg whitespace-nowrap z-20">Break!</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+const OneBlock = ({ isCarry = false, isNewBorrowed = false, dashed = false, removedTarget = false }) => {
+  const highlight = isCarry || isNewBorrowed;
+  return (
+    <div className={`w-5 h-5 rounded-full transition-all duration-300 shadow-sm flex items-center justify-center flex-shrink-0
+      ${dashed ? (removedTarget ? 'bg-emerald-100/50 border-2 border-emerald-500' : 'bg-transparent border-2 border-dashed border-amber-600') : 
+        'bg-yellow-400 border border-yellow-600 shadow-[inset_0_-2px_4px_rgba(180,100,0,0.5)]'}
+      ${highlight && !dashed ? 'ring-4 ring-emerald-400 shadow-lg shadow-emerald-400/50 scale-110 z-10' : ''}
+    `}>
+      {dashed && removedTarget && <span className="text-emerald-600 font-bold text-sm">✓</span>}
+    </div>
+  );
+};
+
+const Button = ({ children, onClick, color = 'emerald' }) => {
+  const colors = {
+    emerald: 'bg-[#2b5a3b] hover:bg-[#1a4a2b] border-[#1a3a1b]',
+    amber: 'bg-[#d49a2a] hover:bg-[#b47a0a] border-[#8b5a1b]',
+    rose: 'bg-[#8b2b2b] hover:bg-[#6b1b1b] border-[#4a0b0b]',
+    slate: 'bg-[#4a5a6a] hover:bg-[#2a3a4a] border-[#1a2a3a]'
+  };
+  
+  return (
+    <button 
+      onClick={onClick}
+      className={`${colors[color]} text-[#f4e4bc] px-6 py-3 rounded text-lg shadow-md hover:shadow-lg transition-transform focus:outline-none border-2 active:scale-95 tracking-wide`}
+    >
+      {children}
+    </button>
+  );
+};
+
+export default App;

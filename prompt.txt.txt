@@ -1,0 +1,84 @@
+Context & Goal:
+You are an expert React developer and educational game designer. Build a 3-digit addition and subtraction visualization web app for 2nd graders. The app uses a Pirate Theme to teach "carrying" and "borrowing" using a step-by-step, Socratic method (asking the student what to do next rather than doing it for them).
+
+Tech Stack:
+React (Functional components, Hooks), Tailwind CSS, Single-file component structure.
+
+Core Mechanics & Layout:
+The screen should have a parchment/wood nautical aesthetic.
+
+Header: Title and Current Operation (+ or -).
+
+Left Panel (Math Equation): A vertical, standard algorithm math problem. The numbers must update in real-time (crossing out numbers, showing carried 1s) as the visual blocks are manipulated.
+
+Right Panel (Visual Canvas): Three columns for Hundreds (100s), Tens (10s), and Ones (1s).
+
+Action Bar (Bottom): Contextual buttons that change based on the current step.
+
+Feedback Bar: A text area above the visual canvas that guides the pirate/student.
+
+Phase 1: Word Problem Phase
+
+When a new problem is generated, do not show the calculator yet.
+
+Randomly generate a 3-digit Addition or Subtraction problem.
+
+Subtraction generation constraints: Heavily weight the generation toward complex scenarios like "Skip Borrowing" (e.g., 304 - 157, where tens are 0) and "Double Borrowing" (e.g., 712 - 257).
+
+Generate a pirate-themed word problem based on the numbers.
+
+Ask the user: "How do we solve this, matey?" Provide two buttons: "ADD the Loot (+)" and "SUBTRACT the Loot (-)".
+
+If they guess wrong, give a helpful hint. If they guess right, proceed to Phase 2.
+
+Phase 2: Socratic Step-by-Step Calculator
+Do NOT auto-evaluate. Make the user explicitly declare if they need to carry or borrow.
+
+Addition Flow:
+
+Click "Combine Coins" (adds top and bottom ones).
+
+Ask: "Do we need to melt 10 coins into a Bar?" (Yes/No buttons).
+
+If Yes (and valid), click to "Melt" (removes 10 ones, adds 1 carried ten).
+
+Click "Combine Bars".
+
+Ask: "Do we need to stack 10 Bars into a Pile?" (Yes/No buttons).
+
+If Yes (and valid), click to "Stack" (removes 10 tens, adds 1 carried hundred).
+
+Click "Combine Piles" to finish.
+
+Subtraction Flow:
+
+Ask: "Do we need to break a Gold Bar to get more loose coins?" (Yes/No buttons).
+
+If Yes, ask: "What should we break?" (Gold Bar / Gold Pile buttons). Ensure they select the correct neighbor. If tens are 0, they MUST break a Hundred first (Skip Borrowing).
+
+User clicks the highlighted visual block to break it (1 Hundred -> 10 Tens, or 1 Ten -> 10 Ones).
+
+User clicks the required amount of Ones to "pay" them.
+
+Ask: "Do we need to break a Gold Pile to get more Bars?" (Yes/No buttons).
+
+Repeat the borrowing source logic if needed.
+
+User clicks the required amount of Tens to "pay" them.
+
+User clicks the required amount of Hundreds to "pay" them to finish.
+
+Visual Requirements (The Base-10 Blocks):
+
+Ones (Coins): 5x5 rounded divs, yellow background, circular (rounded-full).
+
+Tens (Bars): 1x10 vertical stack of coins, appearing as a single long golden bar.
+
+Hundreds (Piles): 10x10 grid block, appearing as a large golden square pile.
+
+Grid Layout: All blocks in their respective columns must wrap in a CSS Grid with grid-cols-5 so the child can easily subitize (count by 5s) instead of counting one by one.
+
+Subtraction "Pay" Zone: In subtraction, render dashed outlines of the blocks needed to be removed at the bottom of the columns. When a solid block is clicked, place a checkmark inside the dashed block to show progress.
+
+State Management Hints:
+Use a robust state machine or multiple useState hooks to track: step (current phase of the flow), problem (top/bottom numbers), mode (add/sub), and arrays or counts for physical blocks currently on screen (currentOnes, onesRemoved, carryTens, etc.). Ensure the vertical math text rigidly reflects these physical block states.
