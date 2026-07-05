@@ -39,6 +39,7 @@ const App = () => {
   const [onesVerified, setOnesVerified] = useState(false);
   const [tensVerified, setTensVerified] = useState(false);
   const [hundredsVerified, setHundredsVerified] = useState(false);
+  const [showBarModel, setShowBarModel] = useState(false);
 
   // Problem Generator (Word Problems & Numbers)
   const generateProblem = (customObj = null) => {
@@ -48,6 +49,7 @@ const App = () => {
     setOnesVerified(false);
     setTensVerified(false);
     setHundredsVerified(false);
+    setShowBarModel(false);
     setFirstAttempts({ ones: null, tens: null, hundreds: null });
 
     let isAddition = true;
@@ -709,12 +711,95 @@ const App = () => {
 
   if (phase === 'word_problem') {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-serif">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-serif animate-fade-in">
         <div className="max-w-xl w-full bg-[#f4e4bc] p-6 rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] border-4 border-[#8b5a2b] relative">
            <h1 className="text-2xl md:text-3xl font-bold text-center text-[#4a3b2c] mb-4 uppercase tracking-widest">Captain's Log</h1>
            <p className="text-lg md:text-xl text-[#3a2a1a] mb-6 leading-relaxed text-center">
              "{problemText}"
            </p>
+
+           {/* Expandable Bar Model */}
+           <div className="flex flex-col items-center mb-6 w-full">
+             <button
+               onClick={() => setShowBarModel(prev => !prev)}
+               className="text-[#8b5a2b] hover:text-[#b47a0a] font-bold underline transition-colors focus:outline-none flex items-center gap-1 text-sm md:text-base uppercase tracking-wider"
+             >
+               {showBarModel ? "📖 Hide Bar Model" : "📖 Show Bar Model"}
+             </button>
+
+             {showBarModel && (
+               <div className="w-full mt-4 p-4 bg-[#ebdcb9] border-2 border-[#8b5a2b]/40 rounded-sm flex flex-col items-center shadow-inner animate-fade-in">
+                 <h4 className="text-[#4a3b2c] font-bold text-xs uppercase tracking-wider mb-3">Loot Bar Model</h4>
+
+                 {mode === 'addition' ? (
+                   <>
+                     {/* Whole Bracket (Top) */}
+                     <div className="w-full flex flex-col items-center mb-1">
+                       <span className="text-[#8b5a2b] font-bold text-sm">Total = ?</span>
+                       <div className="w-full h-3 border-t-2 border-x-2 border-[#8b5a2b] rounded-t-sm relative mt-1">
+                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#ebdcb9] flex items-center justify-center text-[#8b5a2b] font-bold text-xs">▼</div>
+                       </div>
+                     </div>
+
+                     {/* Parts Bars (Middle) */}
+                     <div className="w-full flex h-10 border border-[#8b5a2b]/30 rounded overflow-hidden shadow-inner font-mono font-bold text-sm text-[#f4e4bc]">
+                       <div 
+                         style={{ flex: problem.top }} 
+                         className="bg-[#b47a2a] flex items-center justify-center border-r border-[#ebdcb9] px-2 text-center"
+                       >
+                         {problem.top}
+                       </div>
+                       <div 
+                         style={{ flex: problem.bottom }} 
+                         className="bg-[#2b5a3b] flex items-center justify-center px-2 text-center"
+                       >
+                         {problem.bottom}
+                       </div>
+                     </div>
+
+                     {/* Parts Labels (Bottom) */}
+                     <div className="w-full flex justify-between mt-1 text-xs text-[#8b5a2b] font-serif font-bold">
+                       <span className="text-left w-1/2">Part 1: {problem.top}</span>
+                       <span className="text-right w-1/2">Part 2: {problem.bottom}</span>
+                     </div>
+                   </>
+                 ) : (
+                   <>
+                     {/* Whole Bracket (Top) */}
+                     <div className="w-full flex flex-col items-center mb-1">
+                       <span className="text-[#8b5a2b] font-bold text-sm">Total = {problem.top}</span>
+                       <div className="w-full h-3 border-t-2 border-x-2 border-[#8b5a2b] rounded-t-sm relative mt-1">
+                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#ebdcb9] flex items-center justify-center text-[#8b5a2b] font-bold text-xs">▼</div>
+                       </div>
+                     </div>
+
+                     {/* Parts Bars (Middle) */}
+                     <div className="w-full flex h-10 border border-[#8b5a2b]/30 rounded overflow-hidden shadow-inner font-mono font-bold text-sm text-[#f4e4bc]">
+                       <div 
+                         style={{ flex: problem.bottom }} 
+                         className="bg-[#2b5a3b] flex items-center justify-center border-r border-[#ebdcb9] px-2 text-center"
+                       >
+                         {problem.bottom}
+                       </div>
+                       <div 
+                         style={{ flex: problem.top - problem.bottom }} 
+                         className="bg-[#8b2b2b] flex items-center justify-center px-2 text-center"
+                       >
+                         ?
+                       </div>
+                     </div>
+
+                     {/* Parts Labels (Bottom) */}
+                     <div className="w-full flex justify-between mt-1 text-xs text-[#8b5a2b] font-serif font-bold">
+                       <span className="text-left w-1/2">Given Part: {problem.bottom}</span>
+                       <span className="text-right w-1/2">Missing Part: ?</span>
+                     </div>
+                   </>
+                 )}
+               </div>
+             )}
+           </div>
+
            <div className="flex flex-col gap-3">
              <p className="text-center font-bold text-base text-[#8b5a2b]">How do we solve this, matey?</p>
              <div className="flex justify-center gap-4">
