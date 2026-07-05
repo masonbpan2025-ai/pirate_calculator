@@ -1105,7 +1105,7 @@ const App = () => {
                    {step === 'input_tens_answer' && "Select the number of Gold Bars remaining:"}
                    {step === 'input_hundreds_answer' && "Select the number of Gold Piles remaining:"}
                  </span>
-                 <div className="flex gap-2.5 justify-center flex-wrap">
+                 <div className="flex gap-1.5 sm:gap-2.5 justify-center flex-nowrap w-full overflow-x-auto pb-1">
                    {[...Array(10)].map((_, digit) => {
                      let btnColorClass = "bg-[#d49a2a] hover:bg-[#b47a0a] border-[#8b5a1b]";
                      if (step === 'input_tens_answer') btnColorClass = "bg-[#2b5a3b] hover:bg-[#1a4a2b] border-[#1a3a1b]";
@@ -1119,7 +1119,7 @@ const App = () => {
                            else if (step === 'input_tens_answer') handleVerifyTensDigit(digit);
                            else if (step === 'input_hundreds_answer') handleVerifyHundredsDigit(digit);
                          }}
-                         className={`w-12 h-12 md:w-14 md:h-14 rounded-full ${btnColorClass} text-[#f4e4bc] font-bold text-lg md:text-xl flex items-center justify-center border-2 shadow-md hover:scale-105 active:scale-95 transition-all duration-150`}
+                         className={`w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full ${btnColorClass} text-[#f4e4bc] font-bold text-sm sm:text-lg md:text-xl flex items-center justify-center border-2 shadow-md hover:scale-105 active:scale-95 transition-all duration-150 shrink-0`}
                        >
                          {digit}
                        </button>
