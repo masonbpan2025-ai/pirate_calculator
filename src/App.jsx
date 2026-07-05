@@ -406,15 +406,20 @@ const App = () => {
   const handleAskSourceForOnes = (source) => {
     if (source === 'ten') {
       if (currentTens > 0) {
-        setStep('borrow_tens');
-        setFeedback("Smart pirate! Click a Gold Bar to break it into 10 loose coins.");
+        setCurrentTens(prev => prev - 1);
+        setCurrentOnes(prev => prev + 10);
+        setStep('remove_ones');
+        let targetO = problem.bottom % 10;
+        setFeedback(`Great! We broke a Gold Bar into 10 loose coins. Click ${targetO} coins to hand them over.`);
       } else {
         setFeedback("Look at the Gold Bars. We have 0! We can't break what we don't have.");
       }
     } else if (source === 'hundred') {
       if (currentTens === 0) {
-        setStep('borrow_hundreds_for_tens');
-        setFeedback("Right! We have no Bars, so we MUST break a Pile first. Click a Gold Pile.");
+        setCurrentHundreds(prev => prev - 1);
+        setCurrentTens(prev => prev + 10);
+        setStep('ask_source_for_ones');
+        setFeedback("Awesome! We broke a Gold Pile into 10 Gold Bars. Click a Gold Bar to break it into 10 loose coins.");
       } else {
         setFeedback("Wait, we have Gold Bars right there! Always break the smaller treasure first.");
       }
@@ -441,37 +446,17 @@ const App = () => {
 
   const handleAskSourceForTens = (source) => {
     if (source === 'hundred') {
-       setStep('borrow_hundreds');
-       setFeedback("Aye! Click a Gold Pile to break it into 10 Bars.");
+       setCurrentHundreds(prev => prev - 1);
+       setCurrentTens(prev => prev + 10);
+       setStep('remove_tens');
+       let targetT = Math.floor(problem.bottom / 10) % 10;
+       setFeedback(`Great! We broke a Gold Pile into 10 Gold Bars. Click ${targetT} Gold Bars to hand them over.`);
     } else {
        setFeedback("We need BARS! Breaking a Bar gives us loose coins. We must break a Pile.");
     }
   };
 
-  const handleBorrowHundred = () => {
-    if (step === 'borrow_hundreds_for_tens') {
-      setCurrentHundreds(prev => prev - 1);
-      setCurrentTens(prev => prev + 10);
-      setStep('ask_source_for_ones');
-      setFeedback("Awesome! Now we have Bars. So where do we get the loose coins from?");
-    } else if (step === 'borrow_hundreds') {
-      setCurrentHundreds(prev => prev - 1);
-      setCurrentTens(prev => prev + 10);
-      setStep('remove_tens');
-      let targetT = Math.floor(problem.bottom / 10) % 10;
-      setFeedback(`Great! Now click ${targetT} Gold Bars to hand them over.`);
-    }
-  };
 
-  const handleBorrowTen = () => {
-    if (step === 'borrow_tens') {
-      setCurrentTens(prev => prev - 1);
-      setCurrentOnes(prev => prev + 10);
-      setStep('remove_ones');
-      let targetO = problem.bottom % 10;
-      setFeedback(`Great! Now we have enough coins. Click ${targetO} coins to hand them over.`);
-    }
-  };
 
   const handleRemoveOne = () => {
     if (step === 'remove_ones') {
@@ -919,16 +904,33 @@ const App = () => {
                    <div className="w-full flex items-center gap-2">
                      <span className="text-xs font-bold text-purple-950 bg-purple-200/80 px-1.5 py-0.5 rounded border border-purple-400 shrink-0" style={{ visibility: (hundredsVerified || step === 'input_hundreds_answer') ? 'hidden' : 'visible' }}>{currentHundreds - hundredsRemoved}</span>
                      <div className="grid grid-cols-5 gap-2 flex-1 justify-items-center">
-                       {[...Array(currentHundreds)].map((_, i) => {
-                         const isRemoved = i < hundredsRemoved;
-                         const isInteractive = step === 'remove_hundreds' && !isRemoved;
-                         const isBorrowTarget = (step === 'borrow_hundreds' || step === 'borrow_hundreds_for_tens') && i === currentHundreds - 1;
-                         return (
-                           <div key={`sub-h-${i}`} onClick={isInteractive ? handleRemoveHundred : (isBorrowTarget ? handleBorrowHundred : undefined)} className={`${isInteractive ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}>
-                             <HundredBlock isBorrowTarget={isBorrowTarget} />
-                           </div>
-                         );
-                       })}
+                        {[...Array(currentHundreds)].map((_, i) => {
+                          const isRemoved = i < hundredsRemoved;
+                          const isInteractive = step === 'remove_hundreds' && !isRemoved;
+                          const isBorrowTarget = (step === 'ask_source_for_ones' || step === 'ask_source_for_tens') && i === currentHundreds - 1;
+
+                          const handlePileClick = () => {
+                            if (isInteractive) {
+                              handleRemoveHundred();
+                            } else if (isBorrowTarget) {
+                              if (step === 'ask_source_for_ones') {
+                                handleAskSourceForOnes('hundred');
+                              } else if (step === 'ask_source_for_tens') {
+                                handleAskSourceForTens('hundred');
+                              }
+                            }
+                          };
+
+                          return (
+                            <div 
+                              key={`sub-h-${i}`} 
+                              onClick={handlePileClick} 
+                              className={`${(isInteractive || isBorrowTarget) ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}
+                            >
+                              <HundredBlock isBorrowTarget={isBorrowTarget} />
+                            </div>
+                          );
+                        })}
                      </div>
                    </div>
                    {step !== 'done' && (
@@ -1000,16 +1002,33 @@ const App = () => {
                      <span className="text-xs font-bold text-sky-950 bg-sky-200/80 px-1.5 py-0.5 rounded border border-sky-400 shrink-0" style={{ visibility: (tensVerified || step === 'input_tens_answer') ? 'hidden' : 'visible' }}>{currentTens - tensRemoved}</span>
                      <div className="grid grid-cols-5 gap-2 flex-1 justify-items-center">
                        {[...Array(currentTens)].map((_, i) => {
-                         const isRemoved = i < tensRemoved;
-                         const isInteractive = step === 'remove_tens' && !isRemoved;
-                         const isBorrowTarget = step === 'borrow_tens' && i === currentTens - 1;
-                         const isNewBorrowed = (step === 'borrow_tens' || step === 'remove_tens' || step === 'ask_source_for_ones') && tensRemoved === 0 && currentTens > topT && i >= currentTens - 10;
-                         return (
-                           <div key={`sub-t-${i}`} onClick={isInteractive ? handleRemoveTen : (isBorrowTarget ? handleBorrowTen : undefined)} className={`${isInteractive ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}>
-                             <TenBlock isBorrowTarget={isBorrowTarget} isNewBorrowed={isNewBorrowed && step === 'ask_source_for_ones'} />
-                           </div>
-                         );
-                       })}
+                          const isRemoved = i < tensRemoved;
+                          const isInteractive = step === 'remove_tens' && !isRemoved;
+                          const isBorrowTarget = (step === 'ask_source_for_ones') && i === currentTens - 1;
+                          const isNewBorrowed = (step === 'remove_tens' || step === 'ask_source_for_ones') && tensRemoved === 0 && currentTens > topT && i >= currentTens - 10;
+
+                          const handleBarClick = () => {
+                            if (isInteractive) {
+                              handleRemoveTen();
+                            } else if (isBorrowTarget) {
+                              if (step === 'ask_source_for_ones') {
+                                handleAskSourceForOnes('ten');
+                              }
+                            } else if (step === 'ask_source_for_tens') {
+                              handleAskSourceForTens('ten');
+                            }
+                          };
+
+                          return (
+                            <div 
+                              key={`sub-t-${i}`} 
+                              onClick={handleBarClick} 
+                              className={`${(isInteractive || isBorrowTarget || step === 'ask_source_for_tens') ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}
+                            >
+                              <TenBlock isBorrowTarget={isBorrowTarget} isNewBorrowed={isNewBorrowed && step === 'ask_source_for_ones'} />
+                            </div>
+                          );
+                        })}
                      </div>
                    </div>
                    {step !== 'done' && (
@@ -1162,10 +1181,7 @@ const App = () => {
                   </>
                 )}
                 {step === 'ask_source_for_ones' && (
-                  <>
-                    <Button color="amber" onClick={() => handleAskSourceForOnes('ten')}>Break a Gold Bar</Button>
-                    <Button color="amber" onClick={() => handleAskSourceForOnes('hundred')}>Break a Gold Pile</Button>
-                  </>
+                  <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Bar or Gold Pile to break it!</span>
                 )}
 
                 {step === 'eval_borrow_tens' && (
@@ -1175,10 +1191,7 @@ const App = () => {
                   </>
                 )}
                 {step === 'ask_source_for_tens' && (
-                  <>
-                    <Button color="amber" onClick={() => handleAskSourceForTens('hundred')}>Break a Gold Pile</Button>
-                    <Button color="slate" onClick={() => handleAskSourceForTens('ten')}>Break a Gold Bar</Button>
-                  </>
+                  <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Pile to break it!</span>
                 )}
 
                 {step === 'done' && (
