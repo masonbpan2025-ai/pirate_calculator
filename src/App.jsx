@@ -849,7 +849,7 @@ const App = () => {
               <h3 className="text-sky-950 font-bold mb-2 uppercase tracking-wider text-xs sticky top-0 w-full text-center pb-1 z-20 font-serif bg-[#f4e4bc]/90 backdrop-blur-sm">10s: Gold Bars</h3>
               {mode === 'addition' && (
                 <div className="w-full flex flex-col items-center gap-1.5">
-                  {['eval_carry_tens', 'combine_hundreds', 'regroup_tens', 'done'].includes(step) ? (
+                  {!['combine_ones', 'eval_carry_ones', 'regroup_ones', 'input_ones_answer', 'combine_tens'].includes(step) ? (
                     <div className="w-full flex items-center gap-2">
                       <span className="text-xs font-bold text-sky-950 bg-sky-200/80 px-1.5 py-0.5 rounded border border-sky-400 shrink-0" style={{ visibility: (tensVerified || step === 'input_tens_answer') ? 'hidden' : 'visible' }}>{tensAnswer}</span>
                       <div className="grid grid-cols-5 gap-2 flex-1 justify-items-center mt-1">
