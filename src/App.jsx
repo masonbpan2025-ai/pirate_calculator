@@ -252,6 +252,67 @@ const App = () => {
     }
   };
 
+  const handleVerifyOnesDigit = (digit) => {
+    const correctDigit = mode === 'addition' ? (onesAnswer % 10) : (currentOnes - (problem.bottom % 10));
+    setFirstAttempts(prev => {
+      if (prev.ones === null) {
+        return { ...prev, ones: digit };
+      }
+      return prev;
+    });
+    if (digit === correctDigit) {
+      setOnesVerified(true);
+      setFeedback(mode === 'addition' ? "Correct! Let's combine the Gold Bars next." : "Correct! Let's check the Gold Bars column next.");
+      setStep(mode === 'addition' ? 'combine_tens' : 'eval_borrow_tens');
+    } else {
+      alert("Avast! Count the loose coins carefully and try again.");
+    }
+  };
+
+  const handleVerifyTensDigit = (digit) => {
+    const correctDigit = mode === 'addition' ? (tensAnswer % 10) : (currentTens - (Math.floor(problem.bottom / 10) % 10));
+    setFirstAttempts(prev => {
+      if (prev.tens === null) {
+        return { ...prev, tens: digit };
+      }
+      return prev;
+    });
+    if (digit === correctDigit) {
+      setTensVerified(true);
+      if (mode === 'addition') {
+        setFeedback("Correct! Let's combine the Gold Piles next.");
+        setStep('combine_hundreds');
+      } else {
+        setFeedback("Correct! Let's check the Gold Piles next.");
+        let targetH = Math.floor(problem.bottom / 100);
+        if (targetH > 0) {
+          setStep('remove_hundreds');
+        } else {
+          setStep('input_hundreds_answer');
+        }
+      }
+    } else {
+      alert("Avast! Count the gold bars carefully and try again.");
+    }
+  };
+
+  const handleVerifyHundredsDigit = (digit) => {
+    const correctDigit = mode === 'addition' ? hundredsAnswer : (currentHundreds - Math.floor(problem.bottom / 100));
+    setFirstAttempts(prev => {
+      if (prev.hundreds === null) {
+        return { ...prev, hundreds: digit };
+      }
+      return prev;
+    });
+    if (digit === correctDigit) {
+      setHundredsVerified(true);
+      setFeedback("Shiver me timbers! You calculated the total loot correctly!");
+      setStep('done');
+    } else {
+      alert("Avast! Count the gold piles carefully and try again.");
+    }
+  };
+
   const handleGuessOperation = (guessedMode) => {
     if (guessedMode === mode) {
       setPhase('calculating');
@@ -884,39 +945,18 @@ const App = () => {
                 </div>
               )}
               {step === 'input_hundreds_answer' && (
-                <div className="w-full mt-auto pt-2 border-t border-dashed border-purple-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
-                  <span className="text-xs font-bold text-purple-950 text-center">How many piles remain?</span>
-                  <div className="flex gap-1 items-center w-full justify-center">
-                    <input
-                      type="number"
-                      value={columnAnswerInput}
-                      onChange={(e) => setColumnAnswerInput(e.target.value)}
-                      className="w-14 px-1 py-0.5 border border-purple-800 rounded text-sm font-mono text-center bg-[#fbf6e8]"
-                      placeholder="???"
-                      autoFocus
-                    />
-                    <button
-                      onClick={() => {
-                        const correctDigit = mode === 'addition' ? hundredsAnswer : (currentHundreds - Math.floor(problem.bottom / 100));
-                        setFirstAttempts(prev => {
-                          if (prev.hundreds === null) {
-                            return { ...prev, hundreds: (parseInt(columnAnswerInput) === 0 || parseInt(columnAnswerInput)) ? parseInt(columnAnswerInput) : 0 };
-                          }
-                          return prev;
-                        });
-                        if (parseInt(columnAnswerInput) === correctDigit) {
-                          setHundredsVerified(true);
-                          setColumnAnswerInput("");
-                          setFeedback("Shiver me timbers! You calculated the total loot correctly!");
-                          setStep('done');
-                        } else {
-                          alert("Avast! Count the gold piles carefully and try again.");
-                        }
-                      }}
-                      className="bg-[#2b5a3b] hover:bg-[#1a4a2b] border border-[#1a3a1b] text-[#f4e4bc] px-1.5 py-0.5 rounded text-[11px] font-bold active:scale-95 transition-transform"
-                    >
-                      Verify
-                    </button>
+                <div className="w-full mt-auto pt-1.5 border-t border-dashed border-purple-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
+                  <span className="text-[10px] md:text-xs font-bold text-purple-950 text-center">How many piles remain?</span>
+                  <div className="grid grid-cols-5 gap-1 justify-items-center w-full max-w-[130px] mt-0.5">
+                    {[...Array(10)].map((_, digit) => (
+                      <button
+                        key={digit}
+                        onClick={() => handleVerifyHundredsDigit(digit)}
+                        className="w-5.5 h-5.5 rounded-full bg-[#4a5a6a] hover:bg-[#2a3a4a] active:scale-90 transition-transform text-[#f4e4bc] font-bold text-[10px] flex items-center justify-center border border-[#1a2a3a]"
+                      >
+                        {digit}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -986,49 +1026,18 @@ const App = () => {
                 </div>
               )}
                {step === 'input_tens_answer' && (
-                 <div className="w-full mt-auto pt-2 border-t border-dashed border-sky-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
-                   <span className="text-xs font-bold text-sky-950 text-center">How many bars remain?</span>
-                   <div className="flex gap-1 items-center w-full justify-center">
-                     <input
-                       type="number"
-                       value={columnAnswerInput}
-                       onChange={(e) => setColumnAnswerInput(e.target.value)}
-                       className="w-14 px-1 py-0.5 border border-sky-800 rounded text-sm font-mono text-center bg-[#fbf6e8]"
-                       placeholder="???"
-                       autoFocus
-                     />
-                     <button
-                       onClick={() => {
-                         const correctDigit = mode === 'addition' ? (tensAnswer % 10) : (currentTens - (Math.floor(problem.bottom / 10) % 10));
-                         setFirstAttempts(prev => {
-                           if (prev.tens === null) {
-                             return { ...prev, tens: (parseInt(columnAnswerInput) === 0 || parseInt(columnAnswerInput)) ? parseInt(columnAnswerInput) : 0 };
-                           }
-                           return prev;
-                         });
-                         if (parseInt(columnAnswerInput) === correctDigit) {
-                           setTensVerified(true);
-                           setColumnAnswerInput("");
-                           if (mode === 'addition') {
-                             setFeedback("Correct! Let's combine the Gold Piles next.");
-                             setStep('combine_hundreds');
-                           } else {
-                             setFeedback("Correct! Let's check the Gold Piles next.");
-                             let targetH = Math.floor(problem.bottom / 100);
-                             if (targetH > 0) {
-                               setStep('remove_hundreds');
-                             } else {
-                               setStep('input_hundreds_answer');
-                             }
-                           }
-                         } else {
-                           alert("Avast! Count the gold bars carefully and try again.");
-                         }
-                       }}
-                       className="bg-[#2b5a3b] hover:bg-[#1a4a2b] border border-[#1a3a1b] text-[#f4e4bc] px-1.5 py-0.5 rounded text-[11px] font-bold active:scale-95 transition-transform"
-                     >
-                       Verify
-                     </button>
+                 <div className="w-full mt-auto pt-1.5 border-t border-dashed border-sky-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
+                   <span className="text-[10px] md:text-xs font-bold text-sky-950 text-center">How many bars remain?</span>
+                   <div className="grid grid-cols-5 gap-1 justify-items-center w-full max-w-[130px] mt-0.5">
+                     {[...Array(10)].map((_, digit) => (
+                       <button
+                         key={digit}
+                         onClick={() => handleVerifyTensDigit(digit)}
+                         className="w-5.5 h-5.5 rounded-full bg-[#2b5a3b] hover:bg-[#1a4a2b] active:scale-90 transition-transform text-[#f4e4bc] font-bold text-[10px] flex items-center justify-center border border-[#1a3a1b]"
+                       >
+                         {digit}
+                       </button>
+                     ))}
                    </div>
                  </div>
                )}
@@ -1096,44 +1105,22 @@ const App = () => {
                 </div>
               )}
               {step === 'input_ones_answer' && (
-                 <div className="w-full mt-auto pt-2 border-t border-dashed border-amber-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
-                   <span className="text-xs font-bold text-amber-950 text-center">How many coins remain?</span>
-                   <div className="flex gap-1 items-center w-full justify-center">
-                     <input
-                       type="number"
-                       value={columnAnswerInput}
-                       onChange={(e) => setColumnAnswerInput(e.target.value)}
-                       className="w-14 px-1 py-0.5 border border-amber-800 rounded text-sm font-mono text-center bg-[#fbf6e8]"
-                       placeholder="???"
-                       autoFocus
-                     />
-                     <button
-                       onClick={() => {
-                         const correctDigit = mode === 'addition' ? (onesAnswer % 10) : (currentOnes - (problem.bottom % 10));
-                         setFirstAttempts(prev => {
-                           if (prev.ones === null) {
-                             return { ...prev, ones: (parseInt(columnAnswerInput) === 0 || parseInt(columnAnswerInput)) ? parseInt(columnAnswerInput) : 0 };
-                           }
-                           return prev;
-                         });
-                         if (parseInt(columnAnswerInput) === correctDigit) {
-                           setOnesVerified(true);
-                           setColumnAnswerInput("");
-                           setFeedback(mode === 'addition' ? "Correct! Let's combine the Gold Bars next." : "Correct! Let's check the Gold Bars column next.");
-                           setStep(mode === 'addition' ? 'combine_tens' : 'eval_borrow_tens');
-                         } else {
-                           alert("Avast! Count the loose coins carefully and try again.");
-                         }
-                       }}
-                       className="bg-[#2b5a3b] hover:bg-[#1a4a2b] border border-[#1a3a1b] text-[#f4e4bc] px-1.5 py-0.5 rounded text-[11px] font-bold active:scale-95 transition-transform"
-                     >
-                       Verify
-                     </button>
+                 <div className="w-full mt-auto pt-1.5 border-t border-dashed border-amber-900/30 flex flex-col items-center gap-1 z-30 bg-[#f4e4bc]/95 backdrop-blur-sm p-1 rounded font-serif">
+                   <span className="text-[10px] md:text-xs font-bold text-amber-950 text-center">How many coins remain?</span>
+                   <div className="grid grid-cols-5 gap-1 justify-items-center w-full max-w-[130px] mt-0.5">
+                     {[...Array(10)].map((_, digit) => (
+                       <button
+                         key={digit}
+                         onClick={() => handleVerifyOnesDigit(digit)}
+                         className="w-5.5 h-5.5 rounded-full bg-[#d49a2a] hover:bg-[#b47a0a] active:scale-90 transition-transform text-[#f4e4bc] font-bold text-[10px] flex items-center justify-center border border-[#8b5a1b]"
+                       >
+                         {digit}
+                       </button>
+                     ))}
                    </div>
                  </div>
                )}
             </div>
-
           </div>
 
           {/* Action Area */}
