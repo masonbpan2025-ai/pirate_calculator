@@ -1099,13 +1099,13 @@ const App = () => {
           {/* Action Area */}
           <div className="mt-4 flex gap-3 min-h-12 flex-wrap items-center justify-center font-serif w-full">
              {['input_ones_answer', 'input_tens_answer', 'input_hundreds_answer'].includes(step) ? (
-               <div className="flex flex-col items-center gap-2.5 w-full max-w-xl animate-fade-in">
+               <div className="flex flex-col items-center gap-2.5 w-full animate-fade-in">
                  <span className="text-[#4a3b2c] font-bold text-base md:text-lg">
                    {step === 'input_ones_answer' && "Select the number of Coins remaining:"}
                    {step === 'input_tens_answer' && "Select the number of Gold Bars remaining:"}
                    {step === 'input_hundreds_answer' && "Select the number of Gold Piles remaining:"}
                  </span>
-                 <div className="flex gap-1.5 sm:gap-2.5 justify-center flex-nowrap w-full overflow-x-auto pb-1">
+                 <div className="flex gap-1.5 sm:gap-2.5 justify-center flex-nowrap w-full pb-1">
                    {[...Array(10)].map((_, digit) => {
                      let btnColorClass = "bg-[#d49a2a] hover:bg-[#b47a0a] border-[#8b5a1b]";
                      if (step === 'input_tens_answer') btnColorClass = "bg-[#2b5a3b] hover:bg-[#1a4a2b] border-[#1a3a1b]";
