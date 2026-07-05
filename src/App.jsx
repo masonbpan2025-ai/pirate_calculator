@@ -14,6 +14,8 @@ const App = () => {
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [sessionHistory, setSessionHistory] = useState([]);
   const [firstAttempts, setFirstAttempts] = useState({ ones: null, tens: null, hundreds: null });
+  const [customEquationInput, setCustomEquationInput] = useState("");
+  const [isCustomSession, setIsCustomSession] = useState(false);
 
   // State for Addition
   const [carryOnes, setCarryOnes] = useState(0);
@@ -39,7 +41,7 @@ const App = () => {
   const [hundredsVerified, setHundredsVerified] = useState(false);
 
   // Problem Generator (Word Problems & Numbers)
-  const generateProblem = (forcedMode = null) => {
+  const generateProblem = (customObj = null) => {
     setUserAnswer("");
     setIsAnswerCorrect(false);
     setColumnAnswerInput("");
@@ -49,8 +51,12 @@ const App = () => {
     setFirstAttempts({ ones: null, tens: null, hundreds: null });
 
     let isAddition = true;
-    if (forcedMode) {
-      isAddition = forcedMode === 'addition';
+    let top, bottom;
+
+    if (customObj) {
+      isAddition = customObj.customOp === 'addition';
+      top = customObj.customTop;
+      bottom = customObj.customBottom;
     } else {
       if (modeSetting === 'addition') {
         isAddition = true;
@@ -63,16 +69,24 @@ const App = () => {
     setMode(isAddition ? 'addition' : 'subtraction');
 
     if (isAddition) {
-      // 3-digit addition with randomized carries
-      let h1 = Math.floor(Math.random() * 3) + 1;
-      let h2 = Math.floor(Math.random() * 3) + 1;
-      let t1 = Math.floor(Math.random() * 9) + 1;
-      let t2 = Math.floor(Math.random() * 9) + 1;
-      let o1 = Math.floor(Math.random() * 9) + 1;
-      let o2 = Math.floor(Math.random() * 9) + 1;
-
-      let top = h1 * 100 + t1 * 10 + o1;
-      let bottom = h2 * 100 + t2 * 10 + o2;
+      let h1, h2, t1, t2, o1, o2;
+      if (customObj) {
+        h1 = Math.floor(top / 100);
+        t1 = Math.floor(top / 10) % 10;
+        o1 = top % 10;
+        h2 = Math.floor(bottom / 100);
+        t2 = Math.floor(bottom / 10) % 10;
+        o2 = bottom % 10;
+      } else {
+        h1 = Math.floor(Math.random() * 3) + 1;
+        h2 = Math.floor(Math.random() * 3) + 1;
+        t1 = Math.floor(Math.random() * 9) + 1;
+        t2 = Math.floor(Math.random() * 9) + 1;
+        o1 = Math.floor(Math.random() * 9) + 1;
+        o2 = Math.floor(Math.random() * 9) + 1;
+        top = h1 * 100 + t1 * 10 + o1;
+        bottom = h2 * 100 + t2 * 10 + o2;
+      }
       setProblem({ top, bottom });
 
       const addTemplates = [
@@ -95,7 +109,11 @@ const App = () => {
         `The crew collected ${top} coconuts from the north beach and ${bottom} coconuts from the south beach. How many coconuts did they collect in total?`,
         `Our scouts spotted ${top} crab holes on the first island and ${bottom} crab holes on the second island. How many crab holes did they count altogether?`
       ];
-      setProblemText(addTemplates[Math.floor(Math.random() * addTemplates.length)]);
+      if (customObj) {
+        setProblemText(`Solve this custom loot equation: ${top} + ${bottom}`);
+      } else {
+        setProblemText(addTemplates[Math.floor(Math.random() * addTemplates.length)]);
+      }
 
       setStep('combine_ones');
       setCarryOnes(0);
@@ -105,39 +123,47 @@ const App = () => {
       setHundredsAnswer(0);
       setFeedback("Step 1: Start with the loose coins! Click 'Combine Coins'.");
     } else {
-      let type = Math.random();
-      let h1 = Math.floor(Math.random() * 5) + 4;
-      let h2 = Math.floor(Math.random() * (h1 - 1)) + 1;
-      let t1, t2, o1, o2;
-
-      if (type < 0.2) {
-        // No borrows
-        t1 = Math.floor(Math.random() * 5) + 4;
-        t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
-        o1 = Math.floor(Math.random() * 5) + 4;
-        o2 = Math.floor(Math.random() * (o1 - 1)) + 1;
-      } else if (type < 0.45) {
-        // Double borrow
-        o1 = Math.floor(Math.random() * 4);
-        o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
-        t1 = Math.floor(Math.random() * 4) + 1;
-        t2 = Math.floor(Math.random() * (9 - t1)) + t1 + 1;
-      } else if (type < 0.7) {
-        // Skip borrow
-        t1 = 0;
-        t2 = Math.floor(Math.random() * 8) + 1;
-        o1 = Math.floor(Math.random() * 4);
-        o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
+      let h1, h2, t1, t2, o1, o2;
+      if (customObj) {
+        h1 = Math.floor(top / 100);
+        t1 = Math.floor(top / 10) % 10;
+        o1 = top % 10;
+        h2 = Math.floor(bottom / 100);
+        t2 = Math.floor(bottom / 10) % 10;
+        o2 = bottom % 10;
       } else {
-        // Single borrow (ones only)
-        t1 = Math.floor(Math.random() * 5) + 4;
-        t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
-        o1 = Math.floor(Math.random() * 4);
-        o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
-      }
+        let type = Math.random();
+        h1 = Math.floor(Math.random() * 5) + 4;
+        h2 = Math.floor(Math.random() * (h1 - 1)) + 1;
 
-      let top = h1 * 100 + t1 * 10 + o1;
-      let bottom = h2 * 100 + t2 * 10 + o2;
+        if (type < 0.2) {
+          // No borrows
+          t1 = Math.floor(Math.random() * 5) + 4;
+          t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
+          o1 = Math.floor(Math.random() * 5) + 4;
+          o2 = Math.floor(Math.random() * (o1 - 1)) + 1;
+        } else if (type < 0.45) {
+          // Double borrow
+          o1 = Math.floor(Math.random() * 4);
+          o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
+          t1 = Math.floor(Math.random() * 4) + 1;
+          t2 = Math.floor(Math.random() * (9 - t1)) + t1 + 1;
+        } else if (type < 0.7) {
+          // Skip borrow
+          t1 = 0;
+          t2 = Math.floor(Math.random() * 8) + 1;
+          o1 = Math.floor(Math.random() * 4);
+          o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
+        } else {
+          // Single borrow (ones only)
+          t1 = Math.floor(Math.random() * 5) + 4;
+          t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
+          o1 = Math.floor(Math.random() * 4);
+          o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
+        }
+        top = h1 * 100 + t1 * 10 + o1;
+        bottom = h2 * 100 + t2 * 10 + o2;
+      }
       setProblem({ top, bottom });
 
       const subTemplates = [
@@ -163,7 +189,11 @@ const App = () => {
         `We need ${top} gold piles to buy a new pirate flag. We have already gathered ${bottom} piles. How many more piles of gold do we need to collect?`,
         `The ship's ammunition rack can hold ${top} cannonballs. Currently, there are only ${bottom} cannonballs on the rack. How many empty spaces are left?`
       ];
-      setProblemText(subTemplates[Math.floor(Math.random() * subTemplates.length)]);
+      if (customObj) {
+        setProblemText(`Solve this custom loot equation: ${top} - ${bottom}`);
+      } else {
+        setProblemText(subTemplates[Math.floor(Math.random() * subTemplates.length)]);
+      }
 
       setCurrentHundreds(h1);
       setCurrentTens(t1);
@@ -185,6 +215,7 @@ const App = () => {
   const startSession = () => {
     setSessionHistory([]);
     setCurrentProblemIndex(0);
+    setIsCustomSession(false);
     // Since state setters are asynchronous, we pass the current state configuration directly to initialize the first problem
     generateProblem();
   };
@@ -213,7 +244,7 @@ const App = () => {
 
     setSessionHistory(prev => [...prev, record]);
 
-    if (currentProblemIndex + 1 < problemCountSetting) {
+    if (!isCustomSession && (currentProblemIndex + 1 < problemCountSetting)) {
       setCurrentProblemIndex(prev => prev + 1);
       generateProblem();
     } else {
@@ -496,6 +527,53 @@ const App = () => {
                   }`}
                 >
                   Mixed (+ & -)
+                </button>
+              </div>
+            </div>
+
+            {/* Setting 3: Custom Equation */}
+            <div className="flex flex-col gap-2.5 border-t border-dashed border-[#8b5a2b]/30 pt-4">
+              <label className="font-bold text-[#4a3b2c] text-center md:text-left">Or Enter Custom Equation:</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customEquationInput}
+                  onChange={(e) => setCustomEquationInput(e.target.value)}
+                  className="flex-1 px-3 py-2 border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded text-[#4a3b2c] placeholder-[#8b5a2b]/60 font-mono text-center md:text-left text-sm"
+                  placeholder="e.g., 234 + 189 or 432 - 128"
+                />
+                <button
+                  onClick={() => {
+                    const match = customEquationInput.match(/^\s*(\d+)\s*([\+\-])\s*(\d+)\s*$/);
+                    if (!match) {
+                      alert("Avast! Please enter a valid equation like '234 + 189' or '432 - 128'!");
+                      return;
+                    }
+                    const top = parseInt(match[1]);
+                    const opChar = match[2];
+                    const bottom = parseInt(match[3]);
+                    const op = opChar === '+' ? 'addition' : 'subtraction';
+
+                    if (top >= 1000 || bottom >= 1000) {
+                      alert("Avast! Numbers must be 3 digits or less (less than 1000)!");
+                      return;
+                    }
+
+                    if (op === 'subtraction' && top < bottom) {
+                      alert("Avast! For subtraction, the first number must be greater than or equal to the second!");
+                      return;
+                    }
+
+                    // Start custom adventure!
+                    setSessionHistory([]);
+                    setCurrentProblemIndex(0);
+                    setProblemCountSetting(1);
+                    setIsCustomSession(true);
+                    generateProblem({ customTop: top, customBottom: bottom, customOp: op });
+                  }}
+                  className="bg-[#d49a2a] hover:bg-[#b47a0a] border-2 border-[#8b5a1b] text-[#f4e4bc] px-4 py-2 rounded font-bold transition-all active:scale-95 text-sm shrink-0"
+                >
+                  Illustrate!
                 </button>
               </div>
             </div>
