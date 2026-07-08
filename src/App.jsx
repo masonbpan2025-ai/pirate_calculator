@@ -478,12 +478,38 @@ const App = () => {
     }
   };
 
+  const handleRemoveHorizontal = () => {}; // dummy or none
+
   const handleRemoveHundred = () => {
     if (step === 'remove_hundreds') {
       let targetH = Math.floor(problem.bottom / 100);
       setHundredsRemoved(targetH);
       setStep('input_hundreds_answer');
       setFeedback("Gold Piles paid! Count the remaining piles and type the hundreds answer.");
+    }
+  };
+
+  const handleSlidingBarClick = (source) => {
+    if (step === 'ask_source_for_ones') {
+      if (source === 'ten') {
+        if (currentTens > 0) {
+          handleAskSourceForOnes('ten');
+        } else {
+          setFeedback("Avast! We have 0 Gold Bars! We must break a Gold Pile (Hundreds) first to get Gold Bars.");
+        }
+      } else if (source === 'hundred') {
+        if (currentTens === 0) {
+          handleAskSourceForOnes('hundred');
+        } else {
+          setFeedback("Avast! We have Gold Bars right there! Always break the smaller treasure (Tens) first.");
+        }
+      }
+    } else if (step === 'ask_source_for_tens') {
+      if (source === 'hundred') {
+        handleAskSourceForTens('hundred');
+      } else {
+        setFeedback("Avast! We need BARS! Breaking a Bar gives us loose coins. We must break a Gold Pile (Hundreds).");
+      }
     }
   };
 
@@ -881,8 +907,24 @@ const App = () => {
                    </div>
                    <div className="text-3xl font-mono text-right w-full relative">
                      <div className="flex justify-end gap-1 text-rose-700 font-bold mb-1 h-6 text-lg">
-                       <div className="w-8 text-center">{currentHundreds < topH ? '1' : ''}</div>
-                       <div className="w-8 text-center">{currentOnes > topO ? '1' : ''}</div>
+                       <div className="w-8 text-center flex items-center justify-center relative">
+                         {(step === 'ask_source_for_ones' || step === 'ask_source_for_tens') && !(currentHundreds < topH) ? (
+                           <SlantedBar onClick={() => handleSlidingBarClick('hundred')} label="Break Gold Pile" />
+                         ) : currentHundreds < topH ? (
+                           '1'
+                         ) : (
+                           ''
+                         )}
+                       </div>
+                       <div className="w-8 text-center flex items-center justify-center relative">
+                         {(step === 'ask_source_for_ones' || step === 'ask_source_for_tens') ? (
+                           <SlantedBar onClick={() => handleSlidingBarClick('ten')} label="Break Gold Bar" />
+                         ) : currentOnes > topO ? (
+                           '1'
+                         ) : (
+                           ''
+                         )}
+                       </div>
                        <div className="w-8 text-center"></div>
                      </div>
                      <div className="flex justify-end gap-1 mb-1 tracking-wider">
@@ -992,27 +1034,20 @@ const App = () => {
                         {[...Array(currentHundreds)].map((_, i) => {
                           const isRemoved = i < hundredsRemoved;
                           const isInteractive = step === 'remove_hundreds' && !isRemoved;
-                          const isBorrowTarget = (step === 'ask_source_for_ones' || step === 'ask_source_for_tens') && i === currentHundreds - 1;
 
                           const handlePileClick = () => {
                             if (isInteractive) {
                               handleRemoveHundred();
-                            } else if (isBorrowTarget) {
-                              if (step === 'ask_source_for_ones') {
-                                handleAskSourceForOnes('hundred');
-                              } else if (step === 'ask_source_for_tens') {
-                                handleAskSourceForTens('hundred');
-                              }
                             }
                           };
 
                           return (
                             <div 
                               key={`sub-h-${i}`} 
-                              onClick={handlePileClick} 
-                              className={`${(isInteractive || isBorrowTarget) ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}
+                              onClick={isInteractive ? handlePileClick : undefined} 
+                              className={`${isInteractive ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}
                             >
-                              <HundredBlock isBorrowTarget={isBorrowTarget} />
+                              <HundredBlock isBorrowTarget={false} />
                             </div>
                           );
                         })}
@@ -1074,28 +1109,21 @@ const App = () => {
                        {[...Array(currentTens)].map((_, i) => {
                           const isRemoved = i < tensRemoved;
                           const isInteractive = step === 'remove_tens' && !isRemoved;
-                          const isBorrowTarget = (step === 'ask_source_for_ones') && i === currentTens - 1;
                           const isNewBorrowed = (step === 'remove_tens' || step === 'ask_source_for_ones') && tensRemoved === 0 && currentTens > topT && i >= currentTens - 10;
 
                           const handleBarClick = () => {
                             if (isInteractive) {
                               handleRemoveTen();
-                            } else if (isBorrowTarget) {
-                              if (step === 'ask_source_for_ones') {
-                                handleAskSourceForOnes('ten');
-                              }
-                            } else if (step === 'ask_source_for_tens') {
-                              handleAskSourceForTens('ten');
                             }
                           };
 
                           return (
                             <div 
                               key={`sub-t-${i}`} 
-                              onClick={handleBarClick} 
-                              className={`${(isInteractive || isBorrowTarget || step === 'ask_source_for_tens') ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}
+                              onClick={isInteractive ? handleBarClick : undefined} 
+                              className={`${isInteractive ? 'cursor-pointer hover:scale-105' : ''} ${isRemoved ? 'opacity-20 grayscale' : ''}`}
                             >
-                              <TenBlock isBorrowTarget={isBorrowTarget} isNewBorrowed={isNewBorrowed && step === 'ask_source_for_ones'} />
+                              <TenBlock isBorrowTarget={false} isNewBorrowed={isNewBorrowed && step === 'ask_source_for_ones'} />
                             </div>
                           );
                         })}
@@ -1251,7 +1279,7 @@ const App = () => {
                        </>
                      )}
                      {step === 'ask_source_for_ones' && (
-                       <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Bar or Gold Pile to break it!</span>
+                       <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click on the correct slanted bar at the top of the Simple Notation!</span>
                      )}
 
                      {step === 'eval_borrow_tens' && (
@@ -1261,7 +1289,7 @@ const App = () => {
                        </>
                      )}
                      {step === 'ask_source_for_tens' && (
-                       <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click directly on a Gold Pile to break it!</span>
+                       <span className="text-[#8b5a2b] font-bold italic animate-pulse">👉 Click on the correct slanted bar at the top of the Simple Notation!</span>
                      )}
 
                      {step === 'done' && (
@@ -1352,6 +1380,18 @@ const Button = ({ children, onClick, color = 'emerald' }) => {
       className={`${colors[color]} text-[#f4e4bc] px-4 py-1.5 rounded text-sm md:text-base shadow-sm hover:shadow-md transition-transform focus:outline-none border-2 active:scale-95 tracking-wide`}
     >
       {children}
+    </button>
+  );
+};
+
+const SlantedBar = ({ onClick, label }) => {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      className="w-8 h-6 flex items-center justify-center text-[#2563eb] hover:text-[#1d4ed8] hover:bg-[#dbeafe] rounded font-sans font-black text-2xl transition-all duration-150 cursor-pointer focus:outline-none select-none border border-transparent hover:border-[#bfdbfe]"
+    >
+      /
     </button>
   );
 };
