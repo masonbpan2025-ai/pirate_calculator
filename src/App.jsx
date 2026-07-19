@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const App = () => {
-  const [phase, setPhase] = useState('home'); // 'home' | 'word_problem' | 'calculating' | 'summary'
+  const [phase, setPhase] = useState('home'); // 'home' | 'answer_input' | 'calculating' | 'summary'
   const [mode, setMode] = useState('addition'); // 'addition' or 'subtraction'
   const [problemText, setProblemText] = useState("");
   const [problem, setProblem] = useState({ top: 0, bottom: 0 });
@@ -9,13 +9,17 @@ const App = () => {
   const [feedback, setFeedback] = useState("");
 
   // Session Config States
-  const [problemCountSetting, setProblemCountSetting] = useState(3);
+  const [problemCountSetting, setProblemCountSetting] = useState(5);
   const [modeSetting, setModeSetting] = useState('both'); // 'addition' | 'subtraction' | 'both'
+  const [problemFormat, setProblemFormat] = useState('numerical'); // 'word' | 'numerical'
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [sessionHistory, setSessionHistory] = useState([]);
   const [firstAttempts, setFirstAttempts] = useState({ ones: null, tens: null, hundreds: null });
   const [customEquationInput, setCustomEquationInput] = useState("");
   const [isCustomSession, setIsCustomSession] = useState(false);
+  const [directAnswer, setDirectAnswer] = useState('');
+  const [problemStartTime, setProblemStartTime] = useState(null);
+  const [wrongFirstAttempt, setWrongFirstAttempt] = useState(false);
 
   // State for Addition
   const [carryOnes, setCarryOnes] = useState(0);
@@ -80,14 +84,17 @@ const App = () => {
         t2 = Math.floor(bottom / 10) % 10;
         o2 = bottom % 10;
       } else {
-        h1 = Math.floor(Math.random() * 3) + 1;
-        h2 = Math.floor(Math.random() * 3) + 1;
-        t1 = Math.floor(Math.random() * 9) + 1;
-        t2 = Math.floor(Math.random() * 9) + 1;
-        o1 = Math.floor(Math.random() * 9) + 1;
-        o2 = Math.floor(Math.random() * 9) + 1;
-        top = h1 * 100 + t1 * 10 + o1;
-        bottom = h2 * 100 + t2 * 10 + o2;
+        // Generate valid addition: sum must not exceed 999
+        do {
+          const digitLenTop = Math.floor(Math.random() * 3) + 1;
+          const digitLenBottom = Math.floor(Math.random() * 3) + 1;
+          const minTop = Math.pow(10, digitLenTop - 1);
+          const maxTop = Math.pow(10, digitLenTop) - 1;
+          top = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop;
+          const minBottom = Math.pow(10, digitLenBottom - 1);
+          const maxBottom = Math.pow(10, digitLenBottom) - 1;
+          bottom = Math.floor(Math.random() * (maxBottom - minBottom + 1)) + minBottom;
+        } while (top + bottom > 999);
       }
       setProblem({ top, bottom });
 
@@ -113,6 +120,8 @@ const App = () => {
       ];
       if (customObj) {
         setProblemText(`Solve this custom loot equation: ${top} + ${bottom}`);
+      } else if (problemFormat === 'numerical') {
+        setProblemText(`${top} + ${bottom} = ?`);
       } else {
         setProblemText(addTemplates[Math.floor(Math.random() * addTemplates.length)]);
       }
@@ -134,37 +143,29 @@ const App = () => {
         t2 = Math.floor(bottom / 10) % 10;
         o2 = bottom % 10;
       } else {
-        let type = Math.random();
-        h1 = Math.floor(Math.random() * 5) + 4;
-        h2 = Math.floor(Math.random() * (h1 - 1)) + 1;
+        // Generate valid subtraction: answer must be > 0 (top > bottom)
+        do {
+          const digitLenTop = Math.floor(Math.random() * 3) + 1;
+          const digitLenBottom = Math.floor(Math.random() * 3) + 1;
+          const minTop = Math.pow(10, digitLenTop - 1);
+          const maxTop = Math.pow(10, digitLenTop) - 1;
+          top = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop;
+          const minBottom = Math.pow(10, digitLenBottom - 1);
+          const maxBottom = Math.pow(10, digitLenBottom) - 1;
+          bottom = Math.floor(Math.random() * (maxBottom - minBottom + 1)) + minBottom;
 
-        if (type < 0.2) {
-          // No borrows
-          t1 = Math.floor(Math.random() * 5) + 4;
-          t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
-          o1 = Math.floor(Math.random() * 5) + 4;
-          o2 = Math.floor(Math.random() * (o1 - 1)) + 1;
-        } else if (type < 0.45) {
-          // Double borrow
-          o1 = Math.floor(Math.random() * 4);
-          o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
-          t1 = Math.floor(Math.random() * 4) + 1;
-          t2 = Math.floor(Math.random() * (9 - t1)) + t1 + 1;
-        } else if (type < 0.7) {
-          // Skip borrow
-          t1 = 0;
-          t2 = Math.floor(Math.random() * 8) + 1;
-          o1 = Math.floor(Math.random() * 4);
-          o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
-        } else {
-          // Single borrow (ones only)
-          t1 = Math.floor(Math.random() * 5) + 4;
-          t2 = Math.floor(Math.random() * (t1 - 1)) + 1;
-          o1 = Math.floor(Math.random() * 4);
-          o2 = Math.floor(Math.random() * (9 - o1)) + o1 + 1;
-        }
-        top = h1 * 100 + t1 * 10 + o1;
-        bottom = h2 * 100 + t2 * 10 + o2;
+          if (top < bottom) {
+            [top, bottom] = [bottom, top];
+          }
+        } while (top <= bottom);
+
+        // Extract digits for visualization
+        h1 = Math.floor(top / 100);
+        t1 = Math.floor(top / 10) % 10;
+        o1 = top % 10;
+        h2 = Math.floor(bottom / 100);
+        t2 = Math.floor(bottom / 10) % 10;
+        o2 = bottom % 10;
       }
       setProblem({ top, bottom });
 
@@ -193,6 +194,8 @@ const App = () => {
       ];
       if (customObj) {
         setProblemText(`Solve this custom loot equation: ${top} - ${bottom}`);
+      } else if (problemFormat === 'numerical') {
+        setProblemText(`${top} - ${bottom} = ?`);
       } else {
         setProblemText(subTemplates[Math.floor(Math.random() * subTemplates.length)]);
       }
@@ -206,7 +209,11 @@ const App = () => {
       setStep('eval_borrow_ones');
       setFeedback(`Step 1: Look at the loose coins. We need to pay ${o2}, and we have ${o1}. Do we need to break a Gold Bar?`);
     }
-    setPhase('word_problem');
+    // Go to answer_input phase, record start time
+    setWrongFirstAttempt(false);
+    setDirectAnswer('');
+    setProblemStartTime(Date.now());
+    setPhase('answer_input');
   };
 
   useEffect(() => {
@@ -222,6 +229,39 @@ const App = () => {
     generateProblem();
   };
 
+  const handleSubmitDirectAnswer = () => {
+    const correctVal = mode === 'addition'
+      ? problem.top + problem.bottom
+      : problem.top - problem.bottom;
+    const userVal = parseInt(directAnswer);
+    const timeTaken = problemStartTime ? ((Date.now() - problemStartTime) / 1000).toFixed(1) : 0;
+
+    if (!isNaN(userVal) && userVal === correctVal) {
+      // Correct! Record and move on
+      setSessionHistory(prev => [...prev, {
+        top: problem.top,
+        bottom: problem.bottom,
+        mode: mode,
+        correctAnswer: correctVal,
+        userAnswer: userVal,
+        isCorrect: true,
+        timeTaken: parseFloat(timeTaken),
+        wrongFirstAttempt: false,
+      }]);
+
+      if (!isCustomSession && (currentProblemIndex + 1 < problemCountSetting)) {
+        setCurrentProblemIndex(prev => prev + 1);
+        generateProblem();
+      } else {
+        setPhase('summary');
+      }
+    } else {
+      // Wrong! Go to illustration mode
+      setWrongFirstAttempt(true);
+      setPhase('calculating');
+    }
+  };
+
   const handleNextProblem = () => {
     const correctO = mode === 'addition' ? (onesAnswer % 10) : (currentOnes - (problem.bottom % 10));
     const correctT = mode === 'addition' ? (tensAnswer % 10) : (currentTens - (Math.floor(problem.bottom / 10) % 10));
@@ -233,7 +273,8 @@ const App = () => {
 
     const userVal = userH * 100 + userT * 10 + userO;
     const correctVal = correctH * 100 + correctT * 10 + correctO;
-    const isCorrect = userVal === correctVal;
+    const isCorrect = wrongFirstAttempt ? false : (userVal === correctVal);
+    const timeTaken = problemStartTime ? parseFloat(((Date.now() - problemStartTime) / 1000).toFixed(1)) : 0;
 
     const record = {
       top: problem.top,
@@ -241,7 +282,9 @@ const App = () => {
       mode: mode,
       correctAnswer: correctVal,
       userAnswer: userVal,
-      isCorrect: isCorrect
+      isCorrect: isCorrect,
+      timeTaken: timeTaken,
+      wrongFirstAttempt: wrongFirstAttempt,
     };
 
     setSessionHistory(prev => [...prev, record]);
@@ -282,15 +325,26 @@ const App = () => {
     if (digit === correctDigit) {
       setTensVerified(true);
       if (mode === 'addition') {
-        setFeedback("Correct! Let's combine the Gold Piles next.");
-        setStep('combine_hundreds');
+        if (Math.max(problem.top, problem.bottom) >= 100) {
+          setFeedback("Correct! Let's combine the Gold Piles next.");
+          setStep('combine_hundreds');
+        } else {
+          setHundredsAnswer(carryTens);
+          setHundredsVerified(true);
+          setFeedback("Shiver me timbers! You calculated the total loot correctly!");
+          setStep('done');
+        }
       } else {
         setFeedback("Correct! Let's check the Gold Piles next.");
         let targetH = Math.floor(problem.bottom / 100);
         if (targetH > 0) {
           setStep('remove_hundreds');
-        } else {
+        } else if (Math.max(problem.top, problem.bottom) >= 100) {
           setStep('input_hundreds_answer');
+        } else {
+          setHundredsVerified(true);
+          setFeedback("Shiver me timbers! You calculated the total loot correctly!");
+          setStep('done');
         }
       }
     } else {
@@ -519,30 +573,30 @@ const App = () => {
   // Home Screen Phase
   if (phase === 'home') {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-serif">
-        <div className="max-w-2xl w-full bg-[#f4e4bc] p-6 md:p-8 rounded-sm shadow-[0_0_30px_rgba(0,0,0,0.6)] border-4 border-[#8b5a2b] relative">
-          <div className="absolute top-2 left-2 text-xl select-none">⚓</div>
-          <div className="absolute top-2 right-2 text-xl select-none">⚓</div>
-          <div className="absolute bottom-2 left-2 text-xl select-none">☠️</div>
-          <div className="absolute bottom-2 right-2 text-xl select-none">☠️</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-3 font-serif">
+        <div className="max-w-2xl w-full bg-[#f4e4bc] p-4 rounded-sm shadow-[0_0_30px_rgba(0,0,0,0.6)] border-4 border-[#8b5a2b] relative">
+          <div className="absolute top-1 left-1 text-sm select-none">⚓</div>
+          <div className="absolute top-1 right-1 text-sm select-none">⚓</div>
+          <div className="absolute bottom-1 left-1 text-sm select-none">☠️</div>
+          <div className="absolute bottom-1 right-1 text-sm select-none">☠️</div>
 
-          <h1 className="text-3xl md:text-4xl font-bold text-center text-[#4a3b2c] mb-6 uppercase tracking-widest border-b-2 border-[#8b5a2b]/30 pb-3">
+          <h1 className="text-xl md:text-2xl font-bold text-center text-[#4a3b2c] mb-2 uppercase tracking-widest border-b-2 border-[#8b5a2b]/30 pb-1">
             🏴‍☠️ Pirate's Loot Calculator 🏴‍☠️
           </h1>
-          <p className="text-lg text-[#3a2a1a] mb-8 leading-relaxed text-center italic">
+          <p className="text-sm text-[#3a2a1a] mb-3 text-center italic">
             "Ahoy, matey! Set yer sail and choose yer treasure settings before starting yer math adventure!"
           </p>
 
-          <div className="flex flex-col gap-6 max-w-md mx-auto">
+          <div className="flex flex-col gap-3 max-w-md mx-auto">
             {/* Setting 1: Number of problems */}
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-1.5">
               <label className="font-bold text-[#4a3b2c] text-center md:text-left">Number of Problems:</label>
               <div className="flex gap-2 justify-center md:justify-start">
-                {[3, 5, 10].map(n => (
+                {[5, 10, 20].map(n => (
                   <button
                     key={n}
                     onClick={() => setProblemCountSetting(n)}
-                    className={`flex-1 py-2 rounded font-bold border-2 transition-all active:scale-95 ${
+                    className={`flex-1 py-1.5 rounded font-bold border-2 transition-all active:scale-95 ${
                       problemCountSetting === n
                         ? 'bg-[#d49a2a] text-[#f4e4bc] border-[#8b5a1b] shadow-md'
                         : 'bg-[#e3d1a5] hover:bg-[#d8c393] text-[#4a3b2c] border-[#8b5a2b]/50'
@@ -558,10 +612,15 @@ const App = () => {
                     max="50"
                     value={problemCountSetting}
                     onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (val > 0) setProblemCountSetting(val);
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        setProblemCountSetting('');
+                        return;
+                      }
+                      const val = parseInt(raw);
+                      if (!isNaN(val) && val > 0 && val <= 50) setProblemCountSetting(val);
                     }}
-                    className="w-full py-2 text-center border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded font-mono font-bold text-[#4a3b2c]"
+                    className="w-full py-1.5 text-center border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded font-mono font-bold text-[#4a3b2c]"
                     placeholder="Custom"
                   />
                 </div>
@@ -569,12 +628,12 @@ const App = () => {
             </div>
 
             {/* Setting 2: Mode of problems */}
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-1.5">
               <label className="font-bold text-[#4a3b2c] text-center md:text-left">Problem Type:</label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => setModeSetting('addition')}
-                  className={`flex-1 py-2.5 rounded font-bold border-2 transition-all active:scale-95 ${
+                  className={`flex-1 py-1.5 rounded font-bold border-2 transition-all active:scale-95 ${
                     modeSetting === 'addition'
                       ? 'bg-[#2b5a3b] text-[#f4e4bc] border-[#1a3a1b] shadow-md'
                       : 'bg-[#e3d1a5] hover:bg-[#d8c393] text-[#4a3b2c] border-[#8b5a2b]/50'
@@ -584,7 +643,7 @@ const App = () => {
                 </button>
                 <button
                   onClick={() => setModeSetting('subtraction')}
-                  className={`flex-1 py-2.5 rounded font-bold border-2 transition-all active:scale-95 ${
+                  className={`flex-1 py-1.5 rounded font-bold border-2 transition-all active:scale-95 ${
                     modeSetting === 'subtraction'
                       ? 'bg-[#8b2b2b] text-[#f4e4bc] border-[#4a0b0b] shadow-md'
                       : 'bg-[#e3d1a5] hover:bg-[#d8c393] text-[#4a3b2c] border-[#8b5a2b]/50'
@@ -594,7 +653,7 @@ const App = () => {
                 </button>
                 <button
                   onClick={() => setModeSetting('both')}
-                  className={`flex-1 py-2.5 rounded font-bold border-2 transition-all active:scale-95 ${
+                  className={`flex-1 py-1.5 rounded font-bold border-2 transition-all active:scale-95 ${
                     modeSetting === 'both'
                       ? 'bg-[#4a5a6a] text-[#f4e4bc] border-[#1a2a3a] shadow-md'
                       : 'bg-[#e3d1a5] hover:bg-[#d8c393] text-[#4a3b2c] border-[#8b5a2b]/50'
@@ -605,15 +664,50 @@ const App = () => {
               </div>
             </div>
 
-            {/* Setting 3: Custom Equation */}
-            <div className="flex flex-col gap-2.5 border-t border-dashed border-[#8b5a2b]/30 pt-4">
+            {/* Setting 3: Problem Format */}
+            <div className="flex flex-col gap-1.5">
+              <label className="font-bold text-[#4a3b2c] text-center md:text-left">Problem Format:</label>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={() => setProblemFormat('word')}
+                  className={`flex-1 py-1.5 rounded font-bold border-2 transition-all active:scale-95 ${
+                    problemFormat === 'word'
+                      ? 'bg-[#4a5a6a] text-[#f4e4bc] border-[#1a2a3a] shadow-md'
+                      : 'bg-[#e3d1a5] hover:bg-[#d8c393] text-[#4a3b2c] border-[#8b5a2b]/50'
+                  }`}
+                >
+                  📖 Word Problem
+                </button>
+                <button
+                  onClick={() => setProblemFormat('numerical')}
+                  className={`flex-1 py-1.5 rounded font-bold border-2 transition-all active:scale-95 ${
+                    problemFormat === 'numerical'
+                      ? 'bg-[#d49a2a] text-[#f4e4bc] border-[#8b5a1b] shadow-md'
+                      : 'bg-[#e3d1a5] hover:bg-[#d8c393] text-[#4a3b2c] border-[#8b5a2b]/50'
+                  }`}
+                >
+                  🔢 Numerical
+                </button>
+              </div>
+            </div>
+
+            {/* Start button */}
+            <button
+              onClick={startSession}
+              className="w-full py-2.5 bg-[#2b5a3b] hover:bg-[#1a4a2b] text-[#f4e4bc] font-bold rounded-lg text-lg shadow-lg border-2 border-[#1a3a1b] transition-transform active:scale-95 uppercase tracking-widest"
+            >
+              Start Adventure!
+            </button>
+
+            {/* Setting 4: Custom Equation */}
+            <div className="flex flex-col gap-1.5 border-t border-dashed border-[#8b5a2b]/30 pt-2">
               <label className="font-bold text-[#4a3b2c] text-center md:text-left">Or Enter Custom Equation:</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={customEquationInput}
                   onChange={(e) => setCustomEquationInput(e.target.value)}
-                  className="flex-1 px-3 py-2 border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded text-[#4a3b2c] placeholder-[#8b5a2b]/60 font-mono text-center md:text-left text-sm"
+                  className="flex-1 px-3 py-1.5 border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded text-[#4a3b2c] placeholder-[#8b5a2b]/60 font-mono text-center md:text-left text-sm"
                   placeholder="e.g., 234 + 189 or 432 - 128"
                 />
                 <button
@@ -645,20 +739,13 @@ const App = () => {
                     setIsCustomSession(true);
                     generateProblem({ customTop: top, customBottom: bottom, customOp: op });
                   }}
-                  className="bg-[#d49a2a] hover:bg-[#b47a0a] border-2 border-[#8b5a1b] text-[#f4e4bc] px-4 py-2 rounded font-bold transition-all active:scale-95 text-sm shrink-0"
+                  className="bg-[#d49a2a] hover:bg-[#b47a0a] border-2 border-[#8b5a1b] text-[#f4e4bc] px-4 py-1.5 rounded font-bold transition-all active:scale-95 text-sm shrink-0"
                 >
                   Illustrate!
                 </button>
               </div>
             </div>
 
-            {/* Start button */}
-            <button
-              onClick={startSession}
-              className="mt-4 w-full py-4 bg-[#2b5a3b] hover:bg-[#1a4a2b] text-[#f4e4bc] font-bold rounded-lg text-xl shadow-lg border-2 border-[#1a3a1b] transition-transform active:scale-95 uppercase tracking-widest animate-bounce"
-            >
-              Start Adventure!
-            </button>
           </div>
         </div>
       </div>
@@ -669,6 +756,7 @@ const App = () => {
   if (phase === 'summary') {
     const score = sessionHistory.filter(r => r.isCorrect).length;
     const total = sessionHistory.length;
+    const totalTime = sessionHistory.reduce((sum, r) => sum + (r.timeTaken || 0), 0);
 
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-serif">
@@ -684,6 +772,7 @@ const App = () => {
             </p>
             <p className="text-sm text-[#8b5a2b] mt-1 font-sans">
               {score === total ? "Shiver me timbers! A flawless hoard of loot!" : "Good effort, matey! Try again to earn all the gold!"}
+              &nbsp;|&nbsp; Total time: {totalTime.toFixed(1)}s
             </p>
           </div>
 
@@ -701,6 +790,9 @@ const App = () => {
                   <span className="font-mono text-lg text-[#3a2a1a]">
                     {record.top} {record.mode === 'addition' ? '+' : '-'} {record.bottom}
                   </span>
+                  <span className="text-xs text-[#8b5a2b] ml-2 font-sans">
+                    ⏱ {record.timeTaken != null ? record.timeTaken.toFixed(1) + 's' : '—'}
+                  </span>
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -713,6 +805,7 @@ const App = () => {
                       <span className="flex items-center gap-0.5">✗ Incorrect</span>
                       <span className="text-[10px] text-rose-600 font-normal">
                         (Your answer: <span className="line-through">{record.userAnswer}</span> | Right: {record.correctAnswer})
+                        {record.wrongFirstAttempt && ' | needed illustration'}
                       </span>
                     </div>
                   )}
@@ -728,6 +821,62 @@ const App = () => {
               className="px-8 py-3 bg-[#d49a2a] hover:bg-[#b47a0a] border-2 border-[#8b5a1b] text-[#f4e4bc] font-bold rounded-lg text-lg transition-transform active:scale-95 shadow-md uppercase tracking-wider font-serif"
             >
               ⚓ Back to Dock (Restart)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Answer Input Phase
+  if (phase === 'answer_input') {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-serif animate-fade-in">
+        <div className="max-w-xl w-full bg-[#f4e4bc] p-6 rounded-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] border-4 border-[#8b5a2b] relative">
+          <h1 className="text-xl md:text-2xl font-bold text-center text-[#4a3b2c] mb-4 uppercase tracking-widest">
+            🏴‍☠️ Solve the Loot! 🏴‍☠️
+          </h1>
+
+          {/* Problem display */}
+          <div className="bg-[#fbf6e8] border-2 border-[#8b5a2b]/30 rounded p-4 mb-5 text-center">
+            {problemFormat === 'word' && !isCustomSession && (
+              <p className="text-base md:text-lg text-[#3a2a1a] mb-3 leading-relaxed italic">
+                "{problemText}"
+              </p>
+            )}
+            <div className="font-mono text-3xl md:text-4xl font-bold text-[#3a2a1a] tracking-wider">
+              {problem.top} {mode === 'addition' ? '+' : '-'} {problem.bottom} = <span className="text-[#d49a2a]">?</span>
+            </div>
+          </div>
+
+          {/* Error message if returning from illustration mode */}
+          {wrongFirstAttempt && (
+            <div className="bg-rose-100 border-2 border-rose-400 text-rose-800 p-3 rounded mb-4 text-center font-bold animate-fade-in">
+              ⚓ Avast! That be wrong, matey. Study the gold and try again!
+            </div>
+          )}
+
+          {/* Progress indicator */}
+          <div className="text-center text-sm text-[#8b5a2b] mb-4 font-sans">
+            Problem {currentProblemIndex + 1} of {problemCountSetting} &nbsp;|&nbsp; {mode === 'addition' ? 'Addition (+)' : 'Subtraction (-)'}
+          </div>
+
+          {/* Answer input */}
+          <div className="flex gap-3 items-center justify-center">
+            <input
+              type="number"
+              value={directAnswer}
+              onChange={(e) => setDirectAnswer(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitDirectAnswer(); }}
+              className="w-32 py-3 text-center border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded font-mono font-bold text-2xl text-[#3a2a1a] focus:outline-none focus:border-[#d49a2a] focus:ring-2 focus:ring-[#d49a2a]/30"
+              placeholder="?"
+              autoFocus
+            />
+            <button
+              onClick={handleSubmitDirectAnswer}
+              className="px-6 py-3 bg-[#2b5a3b] hover:bg-[#1a4a2b] text-[#f4e4bc] font-bold rounded-lg text-lg shadow-md border-2 border-[#1a3a1b] transition-transform active:scale-95 uppercase tracking-wider"
+            >
+              Check Loot!
             </button>
           </div>
         </div>
@@ -846,6 +995,11 @@ const App = () => {
   const topH = Math.floor(problem.top / 100);
   const topT = Math.floor(problem.top / 10) % 10;
   const topO = problem.top % 10;
+  const showHundreds = Math.max(problem.top, problem.bottom) >= 100;
+  const showTens = Math.max(problem.top, problem.bottom) >= 10;
+  const bH = Math.floor(problem.bottom / 100);
+  const bT = Math.floor(problem.bottom / 10) % 10;
+  const bO = problem.bottom % 10;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-800 p-4 font-sans flex flex-col items-center justify-center">
@@ -874,24 +1028,24 @@ const App = () => {
             {mode === 'addition' && (
               <>
                 <div className="flex justify-end gap-1 text-xl text-emerald-700 font-bold mb-1 h-6">
-                  <div className="w-8 text-center">{carryTens > 0 ? '+1' : ''}</div>
-                  <div className="w-8 text-center">{carryOnes > 0 ? '+1' : ''}</div>
+                  {showHundreds && <div className="w-8 text-center">{carryTens > 0 ? '+1' : ''}</div>}
+                  {showTens && <div className="w-8 text-center">{carryOnes > 0 ? '+1' : ''}</div>}
                   <div className="w-8 text-center"></div>
                 </div>
                 <div className="flex justify-end gap-1 mb-1 tracking-wider relative">
-                  <span className="w-8 text-center">{topH}</span>
-                  <span className="w-8 text-center">{topT}</span>
+                  {showHundreds && <span className="w-8 text-center">{problem.top >= 100 ? topH : ''}</span>}
+                  {showTens && <span className="w-8 text-center">{problem.top >= 10 ? topT : ''}</span>}
                   <span className="w-8 text-center">{topO}</span>
                 </div>
                 <div className="flex justify-end gap-1 border-b-2 border-[#4a3b2c] pb-2 mb-2 relative tracking-wider">
                   <span className="absolute left-[-12px] top-0 text-xl">+</span>
-                  <span className="w-8 text-center">{Math.floor(problem.bottom / 100)}</span>
-                  <span className="w-8 text-center">{Math.floor(problem.bottom / 10) % 10}</span>
-                  <span className="w-8 text-center">{problem.bottom % 10}</span>
+                  {showHundreds && <span className="w-8 text-center">{problem.bottom >= 100 ? bH : ''}</span>}
+                  {showTens && <span className="w-8 text-center">{problem.bottom >= 10 ? bT : ''}</span>}
+                  <span className="w-8 text-center">{bO}</span>
                 </div>
                  <div className="flex justify-end gap-1 text-emerald-700 font-bold h-10 tracking-wider">
-                   <span className="w-8 text-center">{hundredsVerified ? hundredsAnswer : (['combine_hundreds', 'input_hundreds_answer'].includes(step) ? '?' : '')}</span>
-                   <span className="w-8 text-center">{tensVerified ? (tensAnswer % 10) : (['combine_tens', 'input_tens_answer'].includes(step) ? '?' : '')}</span>
+                   {showHundreds && <span className="w-8 text-center">{hundredsVerified ? hundredsAnswer : (['combine_hundreds', 'input_hundreds_answer'].includes(step) ? '?' : '')}</span>}
+                   {showTens && <span className="w-8 text-center">{tensVerified ? (tensAnswer % 10) : (['combine_tens', 'input_tens_answer'].includes(step) ? '?' : '')}</span>}
                    <span className="w-8 text-center">{onesVerified ? (onesAnswer % 10) : (['combine_ones', 'input_ones_answer'].includes(step) ? '?' : '')}</span>
                  </div>
                </>
@@ -907,7 +1061,7 @@ const App = () => {
                    </div>
                    <div className="text-3xl font-mono text-right w-full relative">
                      <div className="flex justify-end gap-1 text-rose-700 font-bold mb-1 h-6 text-lg">
-                       <div className="w-8 text-center flex items-center justify-center relative">
+                       {showHundreds && <div className="w-8 text-center flex items-center justify-center relative">
                          {(step === 'ask_source_for_ones' || step === 'ask_source_for_tens') && !(currentHundreds < topH) ? (
                            <SlantedBar onClick={() => handleSlidingBarClick('hundred')} label="Break Gold Pile" />
                          ) : currentHundreds < topH ? (
@@ -915,8 +1069,8 @@ const App = () => {
                          ) : (
                            ''
                          )}
-                       </div>
-                       <div className="w-8 text-center flex items-center justify-center relative">
+                       </div>}
+                       {showTens && <div className="w-8 text-center flex items-center justify-center relative">
                          {(step === 'ask_source_for_ones' || step === 'ask_source_for_tens') ? (
                            <SlantedBar onClick={() => handleSlidingBarClick('ten')} label="Break Gold Bar" />
                          ) : currentOnes > topO ? (
@@ -924,23 +1078,23 @@ const App = () => {
                          ) : (
                            ''
                          )}
-                       </div>
+                       </div>}
                        <div className="w-8 text-center"></div>
                      </div>
                      <div className="flex justify-end gap-1 mb-1 tracking-wider">
-                       <span className="w-8 text-center">{topH}</span>
-                       <span className="w-8 text-center">{topT}</span>
+                       {showHundreds && <span className="w-8 text-center">{problem.top >= 100 ? topH : ''}</span>}
+                       {showTens && <span className="w-8 text-center">{problem.top >= 10 ? topT : ''}</span>}
                        <span className="w-8 text-center">{topO}</span>
                      </div>
                      <div className="flex justify-end gap-1 border-b-2 border-[#4a3b2c] pb-2 mb-2 relative tracking-wider">
                        <span className="absolute left-[-12px] top-0 text-xl">-</span>
-                       <span className="w-8 text-center">{Math.floor(problem.bottom / 100)}</span>
-                       <span className="w-8 text-center">{Math.floor(problem.bottom / 10) % 10}</span>
-                       <span className="w-8 text-center">{problem.bottom % 10}</span>
+                       {showHundreds && <span className="w-8 text-center">{problem.bottom >= 100 ? bH : ''}</span>}
+                       {showTens && <span className="w-8 text-center">{problem.bottom >= 10 ? bT : ''}</span>}
+                       <span className="w-8 text-center">{bO}</span>
                      </div>
                      <div className="flex justify-end gap-1 text-rose-700 font-bold h-10 tracking-wider">
-                       <span className="w-8 text-center">{hundredsVerified ? (currentHundreds - Math.floor(problem.bottom / 100)) : (['remove_hundreds', 'input_hundreds_answer'].includes(step) ? '?' : '')}</span>
-                       <span className="w-8 text-center">{tensVerified ? (currentTens - (Math.floor(problem.bottom / 10) % 10)) : (['remove_tens', 'input_tens_answer'].includes(step) ? '?' : '')}</span>
+                       {showHundreds && <span className="w-8 text-center">{hundredsVerified ? (currentHundreds - Math.floor(problem.bottom / 100)) : (['remove_hundreds', 'input_hundreds_answer'].includes(step) ? '?' : '')}</span>}
+                       {showTens && <span className="w-8 text-center">{tensVerified ? (currentTens - (Math.floor(problem.bottom / 10) % 10)) : (['remove_tens', 'input_tens_answer'].includes(step) ? '?' : '')}</span>}
                        <span className="w-8 text-center">{onesVerified ? (currentOnes - (problem.bottom % 10)) : (['remove_ones', 'input_ones_answer'].includes(step) ? '?' : '')}</span>
                      </div>
                    </div>
@@ -956,24 +1110,24 @@ const App = () => {
                    </div>
                    <div className="text-3xl font-mono text-right w-full relative">
                      <div className="flex justify-end gap-1 text-lg text-rose-700 font-bold mb-1 h-6">
-                       <div className="w-8 text-center">{currentHundreds !== topH ? currentHundreds : ''}</div>
-                       <div className="w-8 text-center">{currentTens !== topT ? currentTens : ''}</div>
+                       {showHundreds && <div className="w-8 text-center">{currentHundreds !== topH ? currentHundreds : ''}</div>}
+                       {showTens && <div className="w-8 text-center">{currentTens !== topT ? currentTens : ''}</div>}
                        <div className="w-8 text-center">{currentOnes !== topO ? currentOnes : ''}</div>
                      </div>
                      <div className="flex justify-end gap-1 mb-1 tracking-wider relative">
-                       <span className={`w-8 text-center ${currentHundreds !== topH ? "line-through text-slate-500 opacity-50" : ""}`}>{topH}</span>
-                       <span className={`w-8 text-center ${currentTens !== topT ? "line-through text-slate-500 opacity-50" : ""}`}>{topT}</span>
+                       {showHundreds && <span className={`w-8 text-center ${currentHundreds !== topH ? "line-through text-slate-500 opacity-50" : ""}`}>{problem.top >= 100 ? topH : ''}</span>}
+                       {showTens && <span className={`w-8 text-center ${currentTens !== topT ? "line-through text-slate-500 opacity-50" : ""}`}>{problem.top >= 10 ? topT : ''}</span>}
                        <span className={`w-8 text-center ${currentOnes !== topO ? "line-through text-slate-500 opacity-50" : ""}`}>{topO}</span>
                      </div>
                      <div className="flex justify-end gap-1 border-b-2 border-[#4a3b2c] pb-2 mb-2 relative tracking-wider">
                        <span className="absolute left-[-12px] top-0 text-xl">-</span>
-                       <span className="w-8 text-center">{Math.floor(problem.bottom / 100)}</span>
-                       <span className="w-8 text-center">{Math.floor(problem.bottom / 10) % 10}</span>
-                       <span className="w-8 text-center">{problem.bottom % 10}</span>
+                       {showHundreds && <span className="w-8 text-center">{problem.bottom >= 100 ? bH : ''}</span>}
+                       {showTens && <span className="w-8 text-center">{problem.bottom >= 10 ? bT : ''}</span>}
+                       <span className="w-8 text-center">{bO}</span>
                      </div>
                      <div className="flex justify-end gap-1 text-rose-700 font-bold h-10 tracking-wider">
-                       <span className="w-8 text-center">{hundredsVerified ? (currentHundreds - Math.floor(problem.bottom / 100)) : (['remove_hundreds', 'input_hundreds_answer'].includes(step) ? '?' : '')}</span>
-                       <span className="w-8 text-center">{tensVerified ? (currentTens - (Math.floor(problem.bottom / 10) % 10)) : (['remove_tens', 'input_tens_answer'].includes(step) ? '?' : '')}</span>
+                       {showHundreds && <span className="w-8 text-center">{hundredsVerified ? (currentHundreds - Math.floor(problem.bottom / 100)) : (['remove_hundreds', 'input_hundreds_answer'].includes(step) ? '?' : '')}</span>}
+                       {showTens && <span className="w-8 text-center">{tensVerified ? (currentTens - (Math.floor(problem.bottom / 10) % 10)) : (['remove_tens', 'input_tens_answer'].includes(step) ? '?' : '')}</span>}
                        <span className="w-8 text-center">{onesVerified ? (currentOnes - (problem.bottom % 10)) : (['remove_ones', 'input_ones_answer'].includes(step) ? '?' : '')}</span>
                      </div>
                    </div>
