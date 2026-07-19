@@ -20,6 +20,7 @@ const App = () => {
   const [directAnswer, setDirectAnswer] = useState('');
   const [problemStartTime, setProblemStartTime] = useState(null);
   const [wrongFirstAttempt, setWrongFirstAttempt] = useState(false);
+  const [answerFeedback, setAnswerFeedback] = useState(null); // null | 'correct' | 'wrong'
 
   // State for Addition
   const [carryOnes, setCarryOnes] = useState(0);
@@ -211,6 +212,7 @@ const App = () => {
     }
     // Go to answer_input phase, record start time
     setWrongFirstAttempt(false);
+    setAnswerFeedback(null);
     setDirectAnswer('');
     setProblemStartTime(Date.now());
     setPhase('answer_input');
@@ -237,28 +239,35 @@ const App = () => {
     const timeTaken = problemStartTime ? ((Date.now() - problemStartTime) / 1000).toFixed(1) : 0;
 
     if (!isNaN(userVal) && userVal === correctVal) {
-      // Correct! Record and move on
-      setSessionHistory(prev => [...prev, {
-        top: problem.top,
-        bottom: problem.bottom,
-        mode: mode,
-        correctAnswer: correctVal,
-        userAnswer: userVal,
-        isCorrect: true,
-        timeTaken: parseFloat(timeTaken),
-        wrongFirstAttempt: false,
-      }]);
-
-      if (!isCustomSession && (currentProblemIndex + 1 < problemCountSetting)) {
-        setCurrentProblemIndex(prev => prev + 1);
-        generateProblem();
-      } else {
-        setPhase('summary');
-      }
+      // Correct! Show feedback then move on
+      setAnswerFeedback('correct');
+      setTimeout(() => {
+        setSessionHistory(prev => [...prev, {
+          top: problem.top,
+          bottom: problem.bottom,
+          mode: mode,
+          correctAnswer: correctVal,
+          userAnswer: userVal,
+          isCorrect: true,
+          timeTaken: parseFloat(timeTaken),
+          wrongFirstAttempt: false,
+        }]);
+        setAnswerFeedback(null);
+        if (!isCustomSession && (currentProblemIndex + 1 < problemCountSetting)) {
+          setCurrentProblemIndex(prev => prev + 1);
+          generateProblem();
+        } else {
+          setPhase('summary');
+        }
+      }, 1200);
     } else {
-      // Wrong! Go to illustration mode
-      setWrongFirstAttempt(true);
-      setPhase('calculating');
+      // Wrong! Show feedback then go to illustration
+      setAnswerFeedback('wrong');
+      setTimeout(() => {
+        setWrongFirstAttempt(true);
+        setAnswerFeedback(null);
+        setPhase('calculating');
+      }, 1000);
     }
   };
 
@@ -845,7 +854,14 @@ const App = () => {
               </p>
             )}
             <div className="font-mono text-3xl md:text-4xl font-bold text-[#3a2a1a] tracking-wider">
-              {problem.top} {mode === 'addition' ? '+' : '-'} {problem.bottom} = <span className="text-[#d49a2a]">?</span>
+              {problem.top} {mode === 'addition' ? '+' : '-'} {problem.bottom} = {' '}
+              {answerFeedback === 'correct' ? (
+                <span className="text-emerald-600">{mode === 'addition' ? problem.top + problem.bottom : problem.top - problem.bottom} ✓</span>
+              ) : answerFeedback === 'wrong' ? (
+                <span className="text-rose-600 line-through">{directAnswer} ✗</span>
+              ) : (
+                <span className="text-[#d49a2a]">?</span>
+              )}
             </div>
           </div>
 
@@ -867,14 +883,16 @@ const App = () => {
               type="number"
               value={directAnswer}
               onChange={(e) => setDirectAnswer(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitDirectAnswer(); }}
-              className="w-32 py-3 text-center border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded font-mono font-bold text-2xl text-[#3a2a1a] focus:outline-none focus:border-[#d49a2a] focus:ring-2 focus:ring-[#d49a2a]/30"
+              onKeyDown={(e) => { if (e.key === 'Enter' && !answerFeedback) handleSubmitDirectAnswer(); }}
+              disabled={!!answerFeedback}
+              className="w-32 py-3 text-center border-2 border-[#8b5a2b] bg-[#fbf6e8] rounded font-mono font-bold text-2xl text-[#3a2a1a] focus:outline-none focus:border-[#d49a2a] focus:ring-2 focus:ring-[#d49a2a]/30 disabled:opacity-50"
               placeholder="?"
               autoFocus
             />
             <button
               onClick={handleSubmitDirectAnswer}
-              className="px-6 py-3 bg-[#2b5a3b] hover:bg-[#1a4a2b] text-[#f4e4bc] font-bold rounded-lg text-lg shadow-md border-2 border-[#1a3a1b] transition-transform active:scale-95 uppercase tracking-wider"
+              disabled={!!answerFeedback}
+              className="px-6 py-3 bg-[#2b5a3b] hover:bg-[#1a4a2b] text-[#f4e4bc] font-bold rounded-lg text-lg shadow-md border-2 border-[#1a3a1b] transition-transform active:scale-95 uppercase tracking-wider disabled:opacity-50"
             >
               Check Loot!
             </button>
